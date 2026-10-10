@@ -1,365 +1,533 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f7f8">
-  <title>Sign in to Kivo</title>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Sign in | Kivo</title>
+  <meta name="description" content="Sign in or create your Kivo seller account.">
   <link rel="icon" href="../assets/logo/kivo-icon.png">
   <link rel="stylesheet" href="../css/global.css">
 
   <style>
-    body {
-      min-height: 100vh;
-      background: #f7f7f8;
+    :root {
+      --kivo-purple: #7047eb;
+      --kivo-purple-dark: #5d36d4;
+      --kivo-text: #211f2c;
+      --kivo-muted: #777383;
+      --kivo-border: #e8e5ef;
+      --kivo-background: #f8f7fb;
     }
 
-    .auth-wrap {
-      width: min(100% - 32px, 440px);
-      margin: 48px auto;
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--kivo-background);
+      color: var(--kivo-text);
+      font-family: "DM Sans", Inter, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .auth-header {
+      padding: 24px;
+      text-align: center;
+      background: #fff;
+      border-bottom: 1px solid var(--kivo-border);
+    }
+
+    .auth-logo {
+      width: 125px;
+      max-height: 45px;
+      object-fit: contain;
+    }
+
+    .auth-layout {
+      min-height: calc(100vh - 91px);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 48px 20px;
     }
 
     .auth-card {
-      background: white;
-      border: 1px solid #e7e7eb;
-      border-radius: 18px;
-      padding: 30px;
-      box-shadow: 0 12px 36px rgba(20, 20, 40, .05);
+      width: 100%;
+      max-width: 440px;
+      padding: 34px;
+      background: #fff;
+      border: 1px solid var(--kivo-border);
+      border-radius: 20px;
+      box-shadow: 0 12px 40px rgba(31, 23, 56, 0.05);
     }
 
-    .auth-brand {
-      display: block;
-      width: 120px;
-      max-height: 48px;
-      object-fit: contain;
-      object-position: left center;
-      margin-bottom: 28px;
+    .auth-card h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      letter-spacing: -1px;
     }
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
-
-    .muted {
-      color: #686873;
+    .auth-subtitle {
+      margin: 0 0 25px;
+      color: var(--kivo-muted);
       line-height: 1.6;
-      margin-bottom: 24px;
     }
 
-    .tabs {
+    .auth-tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 22px;
+      gap: 5px;
+      padding: 5px;
+      margin-bottom: 20px;
+      background: #f3f1f8;
+      border-radius: 12px;
     }
 
-    button, input {
-      font: inherit;
-    }
-
-    .tabs button, .google, .submit {
-      min-height: 46px;
+    .auth-tab {
+      padding: 11px;
+      border: 0;
       border-radius: 9px;
+      background: transparent;
+      color: #6f6b7c;
+      font-weight: 600;
       cursor: pointer;
     }
 
-    .tabs button {
-      border: 1px solid #e1e1e7;
-      background: white;
+    .auth-tab.active {
+      background: #fff;
+      color: var(--kivo-text);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
     }
 
-    .tabs button.active {
-      background: #f0edff;
-      border-color: #7356e8;
-      color: #5134c5;
-      font-weight: 600;
-    }
-
-    .google {
+    .auth-button {
       width: 100%;
-      background: white;
-      border: 1px solid #dedee5;
-      color: #222;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border: 1px solid var(--kivo-border);
+      border-radius: 11px;
+      background: #fff;
+      color: var(--kivo-text);
       font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
 
-    .divider {
+    .auth-button:hover {
+      background: #faf9fd;
+      border-color: #cfc6e8;
+    }
+
+    .auth-button.primary {
+      border-color: var(--kivo-purple);
+      background: var(--kivo-purple);
+      color: #fff;
+    }
+
+    .auth-button.primary:hover {
+      background: var(--kivo-purple-dark);
+    }
+
+    .auth-button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .google-mark {
+      width: 19px;
+      height: 19px;
+      flex-shrink: 0;
+    }
+
+    .auth-divider {
       display: flex;
       align-items: center;
       gap: 12px;
-      color: #777;
-      font-size: 13px;
-      margin: 22px 0;
+      margin: 23px 0;
+      color: #918d9d;
+      font-size: 12px;
     }
 
-    .divider::before, .divider::after {
+    .auth-divider::before,
+    .auth-divider::after {
       content: "";
       height: 1px;
       flex: 1;
-      background: #e6e6eb;
+      background: var(--kivo-border);
     }
 
-    .field {
+    .auth-field {
       display: block;
-      font-size: 14px;
+      margin-bottom: 17px;
+      font-size: 13px;
       font-weight: 600;
-      margin-bottom: 16px;
     }
 
-    .field input {
+    .auth-field input {
       display: block;
       width: 100%;
-      box-sizing: border-box;
-      margin-top: 7px;
-      padding: 13px;
-      border: 1px solid #dedee5;
-      border-radius: 9px;
-      background: white;
+      min-height: 47px;
+      margin-top: 8px;
+      padding: 12px 13px;
+      border: 1px solid var(--kivo-border);
+      border-radius: 10px;
+      outline: none;
+      background: #fff;
+      color: var(--kivo-text);
     }
 
-    .submit {
-      width: 100%;
-      border: 0;
-      background: #6d4ce8;
-      color: white;
+    .auth-field input:focus {
+      border-color: var(--kivo-purple);
+      box-shadow: 0 0 0 3px rgba(112, 71, 235, 0.12);
+    }
+
+    .auth-links {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 16px 0;
+      font-size: 13px;
+    }
+
+    .auth-links a,
+    .auth-back {
+      color: var(--kivo-purple);
       font-weight: 600;
-      margin-top: 4px;
+      text-decoration: none;
     }
 
-    button:disabled {
-      opacity: .6;
-      cursor: wait;
-    }
-
-    .message {
+    .auth-message {
       display: none;
-      margin-top: 16px;
-      padding: 12px;
-      border-radius: 9px;
-      font-size: 14px;
-      line-height: 1.5;
+      margin: 17px 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #f0ebff;
+      color: #4d31a2;
+      font-size: 13px;
+      line-height: 1.65;
       overflow-wrap: anywhere;
     }
 
-    .message.visible {
-      display: block;
-    }
+    .auth-message.visible { display: block; }
 
-    .message.error {
+    .auth-message.error {
       background: #fff0f0;
-      color: #a21c1c;
+      color: #a32626;
     }
 
-    .message.success {
-      background: #edf9f0;
-      color: #176534;
+    .auth-message.success {
+      background: #ecfdf3;
+      color: #17663a;
     }
 
-    .footer {
-      margin-top: 22px;
+    .auth-footer {
+      margin-top: 24px;
       text-align: center;
+      color: var(--kivo-muted);
       font-size: 13px;
-      color: #686873;
+      line-height: 1.8;
     }
 
-    .footer a {
-      color: #5134c5;
+    .auth-footer a {
+      color: var(--kivo-purple);
+      text-decoration: none;
+      font-weight: 600;
     }
+
+    [hidden] { display: none !important; }
 
     @media (max-width: 480px) {
-      .auth-wrap {
-        margin: 24px auto;
-      }
-
-      .auth-card {
-        padding: 22px;
-      }
+      .auth-layout { padding: 25px 14px; }
+      .auth-card { padding: 25px 20px; border-radius: 16px; }
+      .auth-card h1 { font-size: 26px; }
     }
   </style>
 </head>
 
 <body>
-  <main class="auth-wrap">
-    <section class="auth-card">
-      <a href="../" aria-label="Return to Kivo homepage">
-        <img class="auth-brand"
-             src="../assets/logo/kivo-wordmark.png"
-             alt="Kivo">
-      </a>
+  <header class="auth-header">
+    <a href="/" aria-label="Kivo homepage">
+      <img class="auth-logo" src="../assets/logo/kivo-wordmark.png" alt="Kivo">
+    </a>
+  </header>
 
-      <div id="form-view">
-        <h1 id="title">Welcome to Kivo</h1>
-        <p class="muted" id="description">
+  <main class="auth-layout">
+    <section class="auth-card">
+      <div id="auth-main">
+        <h1 id="auth-title">Welcome to Kivo</h1>
+        <p class="auth-subtitle" id="auth-subtitle">
           Sign in to manage your business.
         </p>
 
-        <div class="tabs">
-          <button type="button" id="login-tab" class="active">
+        <div class="auth-tabs" id="auth-tabs">
+          <button class="auth-tab active" id="login-tab" type="button">
             Log in
           </button>
-          <button type="button" id="signup-tab">
+          <button class="auth-tab" id="signup-tab" type="button">
             Create account
           </button>
         </div>
 
-        <button type="button" class="google" id="google-button">
+        <button class="auth-button" id="google-button" type="button">
+          <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.42 37.92 46.98 31.75 46.98 24.55z"/>
+            <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.9 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
           Continue with Google
         </button>
 
-        <div class="divider">or continue with email</div>
+        <div class="auth-divider">or continue with email</div>
 
         <form id="auth-form">
-          <label class="field">
+          <label class="auth-field">
             Email address
-            <input type="email" id="email"
-                   autocomplete="email"
-                   placeholder="you@example.com" required>
+            <input
+              type="email"
+              id="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              required
+            >
           </label>
 
-          <label class="field">
+          <label class="auth-field">
             Password
-            <input type="password" id="password"
-                   autocomplete="current-password"
-                   minlength="8"
-                   placeholder="At least 8 characters" required>
+            <input
+              type="password"
+              id="password"
+              autocomplete="current-password"
+              minlength="8"
+              placeholder="Enter your password"
+              required
+            >
           </label>
 
-          <button type="submit" class="submit" id="submit-button">
+          <div class="auth-links">
+            <a href="#" id="forgot-link">Forgot your password?</a>
+          </div>
+
+          <button class="auth-button primary" id="submit-button" type="submit">
             Log in
           </button>
         </form>
+      </div>
 
-        <p style="font-size:14px;margin-top:16px">
-          <a href="#" id="forgot-link">Forgot your password?</a>
+      <div id="recovery-view" hidden>
+        <h1>Reset your password</h1>
+        <p class="auth-subtitle">
+          Choose a new password for your Kivo account.
         </p>
+
+        <form id="recovery-form">
+          <label class="auth-field">
+            New password
+            <input
+              type="password"
+              id="new-password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+              placeholder="At least 8 characters"
+            >
+          </label>
+
+          <label class="auth-field">
+            Confirm new password
+            <input
+              type="password"
+              id="confirm-password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+              placeholder="Enter it again"
+            >
+          </label>
+
+          <button class="auth-button primary" id="recovery-button" type="submit">
+            Update password
+          </button>
+        </form>
       </div>
 
-      <div id="session-view" hidden>
-        <h1>You're signed in</h1>
-        <p class="muted">Your Kivo account is authenticated.</p>
-        <p><strong>Email:</strong> <span id="session-email"></span></p>
-        <p id="session-status">Checking your session...</p>
-        <button type="button" class="submit" id="signout-button">
-          Sign out
-        </button>
-      </div>
+      <div id="auth-message" class="auth-message" role="status" aria-live="polite"></div>
 
-      <div id="message" class="message"
-           role="status" aria-live="polite"></div>
+      <footer class="auth-footer">
+        <a href="/">← Back to Kivo homepage</a>
+      </footer>
     </section>
-
-    <p class="footer">
-      <a href="../">Back to Kivo homepage</a>
-    </p>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // Replace these with your Kivo Supabase project details.
-    // NEVER put your service_role secret key in this file.
+    "use strict";
+
+    // Kivo's Supabase client configuration.
     const SUPABASE_URL = "https://uhgnuuuvjkzfipynnhzk.supabase.co";
     const SUPABASE_PUBLIC_KEY = "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
 
+    const DASHBOARD_URL = "/dashboard/";
+    const LOGIN_URL = "/auth/login.html";
+
     const $ = (id) => document.getElementById(id);
 
-    let client;
-    let mode = "login";
+    const authMain = $("auth-main");
+    const recoveryView = $("recovery-view");
+    const messageBox = $("auth-message");
+    const submitButton = $("submit-button");
+    const googleButton = $("google-button");
 
-    function showMessage(text, type = "error") {
-      $("message").textContent = text;
-      $("message").className = "message visible " + type;
+    let mode = "login";
+    let recoveryMode = false;
+    let navigationStarted = false;
+
+    function showMessage(message, type = "error") {
+      messageBox.textContent = message;
+      messageBox.className = "auth-message visible " + type;
     }
 
     function clearMessage() {
-      $("message").textContent = "";
-      $("message").className = "message";
+      messageBox.textContent = "";
+      messageBox.className = "auth-message";
     }
 
     function getClient() {
-      if (SUPABASE_URL.includes("https://uhgnuuuvjkzfipynnhzk.supabase.co") ||
-          SUPABASE_PUBLIC_KEY.includes("sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy")) {
-        throw new Error(
-          "Please add your Supabase Project URL and public key first."
-        );
+      if (!window.supabase || !window.supabase.createClient) {
+        throw new Error("The Supabase library did not load. Refresh the page and try again.");
       }
 
-      if (!window.supabase) {
-        throw new Error("The Supabase library did not load. Refresh the page.");
+      if (
+        !SUPABASE_URL.startsWith("https://") ||
+        !SUPABASE_PUBLIC_KEY.startsWith("sb_publishable_")
+      ) {
+        throw new Error("Kivo's Supabase URL or publishable key is not configured correctly.");
       }
 
-      if (!client) {
-        client = window.supabase.createClient(
+      if (!window.__kivoSupabaseClient) {
+        window.__kivoSupabaseClient = window.supabase.createClient(
           SUPABASE_URL,
-          SUPABASE_PUBLIC_KEY
+          SUPABASE_PUBLIC_KEY,
+          {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true,
+              flowType: "pkce"
+            }
+          }
         );
       }
 
-      return client;
+      return window.__kivoSupabaseClient;
     }
 
     function setMode(nextMode) {
-      mode = nextMode;
+      mode = nextMode === "signup" ? "signup" : "login";
       clearMessage();
 
-      const signup = mode === "signup";
+      $("login-tab").classList.toggle("active", mode === "login");
+      $("signup-tab").classList.toggle("active", mode === "signup");
 
-      $("login-tab").classList.toggle("active", !signup);
-      $("signup-tab").classList.toggle("active", signup);
-      $("title").textContent = signup
-        ? "Create your Kivo account"
-        : "Welcome to Kivo";
-      $("description").textContent = signup
-        ? "Create an account to start building your business."
-        : "Sign in to manage your business.";
-      $("submit-button").textContent = signup
-        ? "Create account"
-        : "Log in";
-      $("password").autocomplete = signup
-        ? "new-password"
-        : "current-password";
-      $("forgot-link").hidden = signup;
+      $("auth-title").textContent =
+        mode === "login" ? "Welcome to Kivo" : "Create your Kivo account";
+
+      $("auth-subtitle").textContent =
+        mode === "login"
+          ? "Sign in to manage your business."
+          : "Create an account to start building your store.";
+
+      submitButton.textContent =
+        mode === "login" ? "Log in" : "Create account";
+
+      $("password").autocomplete =
+        mode === "login" ? "current-password" : "new-password";
     }
 
     async function showSession(session) {
-      clearMessage();
+      if (!session || !session.access_token) {
+        return false;
+      }
 
-      $("form-view").hidden = Boolean(session);
-      $("session-view").hidden = !session;
+      if (navigationStarted) return true;
 
-      if (!session) return;
-
-      $("session-email").textContent =
-        session.user.email || "No email available";
-
-      $("session-status").textContent =
-        "Checking your session with Kivo's backend...";
+      showMessage("Verifying your account with Kivo...", "success");
 
       try {
-        const response = await fetch("../api/me", {
+        const response = await fetch("/api/me", {
+          method: "GET",
           headers: {
             Authorization: "Bearer " + session.access_token
           },
           cache: "no-store"
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
 
         if (!response.ok || !result.success) {
-          $("session-status").textContent =
-            "Login succeeded, but backend verification failed.";
+          showMessage(
+            result.error || "We couldn't verify your session with Kivo. Please try signing in again."
+          );
+          return false;
+        }
+
+        navigationStarted = true;
+        showMessage("Account verified. Opening your dashboard...", "success");
+        window.location.replace(DASHBOARD_URL);
+        return true;
+      } catch (error) {
+        console.error("Kivo backend verification failed:", error);
+        showMessage(
+          "Kivo's backend could not be reached. Check your connection and try again."
+        );
+        return false;
+      }
+    }
+
+    async function initializeAuth() {
+      try {
+        const client = getClient();
+
+        // Listen for Supabase's password-recovery flow.
+        client.auth.onAuthStateChange((event) => {
+          if (event === "PASSWORD_RECOVERY") {
+            recoveryMode = true;
+            authMain.hidden = true;
+            recoveryView.hidden = false;
+            clearMessage();
+            $("new-password").focus();
+          }
+        });
+
+        const { data, error } = await client.auth.getSession();
+
+        if (error) throw error;
+
+        // Let password recovery take precedence over the ordinary login flow.
+        if (
+          window.location.hash.includes("type=recovery") ||
+          window.location.search.includes("type=recovery")
+        ) {
+          recoveryMode = true;
+          authMain.hidden = true;
+          recoveryView.hidden = false;
           return;
         }
 
-        $("session-status").textContent =
-          "Backend verification successful.";
-          window.location.replace("/dashboard/");
-      } catch {
-        $("session-status").textContent =
-          "Signed in, but the backend could not be reached.";
+        if (data.session) {
+          await showSession(data.session);
+        }
+      } catch (error) {
+        console.error("Kivo authentication initialization failed:", error);
+        showMessage(error.message || "Unable to initialize authentication.");
       }
     }
 
@@ -369,7 +537,10 @@
     $("auth-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       clearMessage();
-      $("submit-button").disabled = true;
+
+      submitButton.disabled = true;
+      submitButton.textContent =
+        mode === "login" ? "Signing in..." : "Creating account...";
 
       try {
         const auth = getClient().auth;
@@ -381,8 +552,7 @@
             email,
             password,
             options: {
-              emailRedirectTo:
-                window.location.origin + "/auth/login.html"
+              emailRedirectTo: window.location.origin + LOGIN_URL
             }
           });
 
@@ -392,7 +562,7 @@
             await showSession(data.session);
           } else {
             showMessage(
-              "Account created. Check your email to confirm your account.",
+              "Your account has been created. Check your email to confirm your address, then sign in.",
               "success"
             );
           }
@@ -403,32 +573,57 @@
           });
 
           if (error) throw error;
+
+          if (!data.session) {
+            throw new Error("Sign-in did not return a session. Please try again.");
+          }
+
           await showSession(data.session);
         }
       } catch (error) {
-        showMessage(error.message || "Authentication failed.");
+        console.error("Kivo email authentication failed:", error);
+        showMessage(error.message || "Authentication failed. Please try again.");
       } finally {
-        $("submit-button").disabled = false;
+        submitButton.disabled = false;
+        submitButton.textContent =
+          mode === "login" ? "Log in" : "Create account";
       }
     });
 
-    $("google-button").addEventListener("click", async () => {
+    googleButton.addEventListener("click", async () => {
       clearMessage();
-      $("google-button").disabled = true;
+      googleButton.disabled = true;
+      googleButton.textContent = "Connecting to Google...";
 
       try {
-        const { error } = await getClient().auth.signInWithOAuth({
+        const client = getClient();
+
+        const { data, error } = await client.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo:
-              window.location.origin + "/dashboard/"
+            redirectTo: window.location.origin + DASHBOARD_URL
           }
         });
 
         if (error) throw error;
+
+        // Supabase normally navigates to Google automatically.
+        // If it doesn't, surface a useful message instead of silently doing nothing.
+        if (data && data.url) {
+          window.location.assign(data.url);
+        }
       } catch (error) {
-        showMessage(error.message || "Google sign-in failed.");
-        $("google-button").disabled = false;
+        console.error("Kivo Google sign-in failed:", error);
+        showMessage(error.message || "Google sign-in failed. Please try again.");
+        googleButton.disabled = false;
+        googleButton.innerHTML = `
+          <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.42 37.92 46.98 31.75 46.98 24.55z"/>
+            <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.9 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Continue with Google`;
       }
     });
 
@@ -439,9 +634,7 @@
       const email = $("email").value.trim();
 
       if (!email) {
-        showMessage(
-          "Enter your email address above first, then click this link."
-        );
+        showMessage("Enter your email address first, then click Forgot your password.");
         $("email").focus();
         return;
       }
@@ -450,8 +643,7 @@
         const { error } = await getClient().auth.resetPasswordForEmail(
           email,
           {
-            redirectTo:
-              window.location.origin + "/auth/login.html"
+            redirectTo: window.location.origin + LOGIN_URL
           }
         );
 
@@ -462,45 +654,56 @@
           "success"
         );
       } catch (error) {
+        console.error("Kivo password recovery request failed:", error);
         showMessage(error.message || "Unable to request password recovery.");
       }
     });
 
-    $("signout-button").addEventListener("click", async () => {
+    $("recovery-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
       clearMessage();
 
+      const password = $("new-password").value;
+      const confirmation = $("confirm-password").value;
+      const button = $("recovery-button");
+
+      if (password.length < 8) {
+        showMessage("Your new password must be at least 8 characters long.");
+        return;
+      }
+
+      if (password !== confirmation) {
+        showMessage("The passwords do not match.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Updating password...";
+
       try {
-        const { error } = await getClient().auth.signOut();
+        const { error } = await getClient().auth.updateUser({ password });
+
         if (error) throw error;
 
-        await showSession(null);
+        await getClient().auth.signOut();
+
+        recoveryMode = false;
+        recoveryView.hidden = true;
+        authMain.hidden = false;
         setMode("login");
-        showMessage("You have signed out.", "success");
+
+        showMessage(
+          "Your password has been updated. You can now sign in with your new password.",
+          "success"
+        );
       } catch (error) {
-        showMessage(error.message || "Unable to sign out.");
+        console.error("Kivo password update failed:", error);
+        showMessage(error.message || "Unable to update your password.");
+      } finally {
+        button.disabled = false;
+        button.textContent = "Update password";
       }
     });
-
-    async function initializeAuth() {
-      try {
-        const auth = getClient().auth;
-        const { data, error } = await auth.getSession();
-
-        if (error) throw error;
-
-        await showSession(data.session);
-
-        auth.onAuthStateChange((event, session) => {
-          if (event === "SIGNED_IN" && session) {
-            showSession(session);
-          } else if (event === "SIGNED_OUT") {
-            showSession(null);
-          }
-        });
-      } catch (error) {
-        showMessage(error.message || "Unable to initialize authentication.");
-      }
-    }
 
     initializeAuth();
   </script>
