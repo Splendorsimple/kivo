@@ -4,404 +4,617 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#f8f7fc">
   <title>Dashboard | Kivo</title>
-  <link rel="icon" href="../assets/logo/kivo-icon.png">
-  <link rel="stylesheet" href="../css/global.css">
+
+  <link rel="icon" href="/assets/logo/kivo-icon.png">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
-    .dashboard-layout {
-      min-height: 100vh;
-      background: #f8f7fb;
+    :root {
+      --purple: #6d28d9;
+      --purple-dark: #5521ad;
+      --background: #f8f7fc;
+      --surface: #ffffff;
+      --text: #17151d;
+      --muted: #777381;
+      --border: #e9e6f0;
+      --danger: #b42318;
+      --success: #18794e;
     }
 
-    .dashboard-topbar {
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: var(--background);
+      color: var(--text);
+    }
+
+    button, a { font: inherit; }
+
+    a {
+      color: var(--purple);
+      text-decoration: none;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .topbar {
+      height: 72px;
+      padding: 0 6%;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
-      padding: 18px 5%;
-      background: #fff;
-      border-bottom: 1px solid #eceaf2;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
 
-    .dashboard-logo {
-      width: 115px;
-      height: auto;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-size: 23px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .brand img {
+      width: 35px;
+      height: 35px;
       object-fit: contain;
     }
 
-    .dashboard-topbar a {
-      text-decoration: none;
-    }
-
-    .dashboard-content {
-      width: min(1120px, 90%);
-      margin: 0 auto;
-      padding: 48px 0;
-    }
-
-    .dashboard-heading {
+    .top-actions {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 32px;
-    }
-
-    .dashboard-heading h1 {
-      margin: 0 0 10px;
-      font-size: clamp(1.8rem, 4vw, 2.5rem);
-      letter-spacing: -0.04em;
-    }
-
-    .dashboard-heading p {
-      margin: 0;
-      color: #706d7c;
-      line-height: 1.6;
-    }
-
-    .dashboard-button {
-      display: inline-flex;
-      justify-content: center;
       align-items: center;
-      padding: 12px 18px;
+      gap: 16px;
+    }
+
+    .user-email {
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .button {
       border: 0;
       border-radius: 10px;
-      background: #7047eb;
+      padding: 11px 16px;
+      font-weight: 650;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .button-primary {
       color: #fff;
-      font: inherit;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
+      background: var(--purple);
     }
 
-    .dashboard-button:hover {
-      background: #5d36d4;
+    .button-primary:hover {
+      background: var(--purple-dark);
     }
 
-    .dashboard-stats {
+    .button-secondary {
+      color: var(--text);
+      background: #f1eff7;
+    }
+
+    .button:disabled {
+      opacity: .55;
+      cursor: wait;
+    }
+
+    main {
+      width: min(1100px, 90%);
+      margin: 42px auto;
+    }
+
+    .welcome {
+      margin-bottom: 30px;
+    }
+
+    .eyebrow {
+      color: var(--purple);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0;
+      font-size: clamp(29px, 5vw, 40px);
+      letter-spacing: -1.5px;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .status {
+      display: none;
+      margin: 20px 0;
+      padding: 15px 17px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .status.show { display: block; }
+
+    .status.error {
+      color: var(--danger);
+      border-color: #f0c9c5;
+      background: #fff8f7;
+    }
+
+    .status.success {
+      color: var(--success);
+      border-color: #b9e2cd;
+      background: #f4fcf7;
+    }
+
+    .status.info {
+      color: #51456b;
+      background: #f2edff;
+      border-color: #ddd0ff;
+    }
+
+    .section-heading {
+      margin: 30px 0 15px;
+      font-size: 19px;
+      letter-spacing: -.4px;
+    }
+
+    .grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 18px;
-      margin-bottom: 28px;
     }
 
-    .dashboard-card {
-      padding: 24px;
-      border: 1px solid #eceaf2;
+    .card {
+      padding: 23px;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      background: #fff;
+      min-width: 0;
     }
 
-    .dashboard-card-label {
-      color: #706d7c;
-      font-size: 0.9rem;
+    .card-label {
+      color: var(--muted);
+      font-size: 14px;
     }
 
-    .dashboard-card-value {
-      margin: 12px 0 8px;
-      font-size: 1.65rem;
-      font-weight: 700;
-      letter-spacing: -0.04em;
+    .card-value {
+      margin-top: 14px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -.7px;
     }
 
-    .dashboard-card-note {
-      color: #888493;
-      font-size: 0.85rem;
-    }
-
-    .dashboard-main-grid {
-      display: grid;
-      grid-template-columns: 1.3fr 0.7fr;
-      gap: 20px;
-    }
-
-    .dashboard-card h2 {
-      margin: 0 0 10px;
-      font-size: 1.15rem;
-    }
-
-    .dashboard-card p {
-      color: #706d7c;
-      line-height: 1.7;
-    }
-
-    .setup-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 17px 0;
-      border-bottom: 1px solid #f0eef5;
-    }
-
-    .setup-step:last-child {
-      border-bottom: 0;
-    }
-
-    .setup-number {
-      display: grid;
-      place-items: center;
-      flex: 0 0 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: #f0ebff;
-      color: #7047eb;
-      font-weight: 700;
-    }
-
-    .setup-step strong {
-      display: block;
-      margin: 2px 0 5px;
-    }
-
-    .setup-step p {
-      margin: 0;
-      font-size: 0.9rem;
-    }
-
-    .setup-link {
-      display: inline-block;
-      margin-top: 9px;
-      color: #7047eb;
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .account-email {
-      overflow-wrap: anywhere;
-      font-weight: 600;
-      color: #262333;
-    }
-
-    .dashboard-message {
-      padding: 12px 14px;
-      border-radius: 10px;
-      background: #f0ebff;
-      color: #4d31a2;
+    .card-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
       line-height: 1.6;
     }
 
-    .dashboard-error {
-      background: #fff0f0;
-      color: #a32626;
+    .setup-card {
+      margin-top: 22px;
+      padding: 26px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
     }
 
-    @media (max-width: 760px) {
-      .dashboard-stats {
-        grid-template-columns: 1fr;
+    .setup-card h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    .setup-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .footer {
+      margin: 36px 0 20px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 700px) {
+      .topbar {
+        height: auto;
+        min-height: 70px;
+        padding: 16px 5%;
+        gap: 12px;
       }
 
-      .dashboard-main-grid {
-        grid-template-columns: 1fr;
+      .brand { font-size: 20px; }
+
+      .top-actions {
+        gap: 9px;
+        flex-direction: column;
+        align-items: flex-end;
       }
 
-      .dashboard-content {
-        padding: 32px 0;
+      .user-email {
+        max-width: 190px;
+        font-size: 11px;
       }
 
-      .dashboard-card {
-        padding: 20px;
+      .button {
+        padding: 10px 12px;
+        font-size: 13px;
       }
+
+      main { margin-top: 30px; }
+
+      .grid { grid-template-columns: 1fr; }
+
+      .card { padding: 20px; }
     }
   </style>
 </head>
-<body>
-  <div class="dashboard-layout">
-    <header class="dashboard-topbar">
-      <a href="/" aria-label="Kivo homepage">
-        <img
-          class="dashboard-logo"
-          src="../assets/logo/kivo-wordmark.png"
-          alt="Kivo"
-        >
-      </a>
 
-      <button id="sign-out-button" class="dashboard-button" type="button">
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Kivo homepage">
+      <img src="/assets/logo/kivo-icon.png" alt="">
+      <span>Kivo</span>
+    </a>
+
+    <div class="top-actions">
+      <span class="user-email" id="user-email">Checking session...</span>
+      <button class="button button-secondary" id="sign-out" disabled>
         Sign out
       </button>
-    </header>
+    </div>
+  </header>
 
-    <main class="dashboard-content">
-      <section class="dashboard-heading">
-        <div>
-          <h1>Welcome to Kivo 👋</h1>
-          <p>Your business, your products, your sales — all in one place.</p>
-        </div>
+  <main>
+    <section class="welcome">
+      <div class="eyebrow">Seller workspace</div>
+      <h1 id="welcome-title">Loading your dashboard...</h1>
+      <p class="muted">
+        Manage your store and prepare your business for its next sale.
+      </p>
+    </section>
 
-        <a class="dashboard-button" href="#store-setup">
-          Set up your store
-        </a>
-      </section>
+    <div id="status" class="status show info" role="status" aria-live="polite">
+      Checking your Kivo sign-in...
+    </div>
 
-      <div id="dashboard-message" class="dashboard-message" role="status">
-        Verifying your account...
+    <section id="dashboard-content" class="hidden">
+      <h2 class="section-heading">Your overview</h2>
+
+      <div class="grid">
+        <article class="card">
+          <div class="card-label">Products</div>
+          <div class="card-value">—</div>
+          <div class="card-note">Product management is not connected yet.</div>
+        </article>
+
+        <article class="card">
+          <div class="card-label">Orders</div>
+          <div class="card-value">—</div>
+          <div class="card-note">Order management is not connected yet.</div>
+        </article>
+
+        <article class="card">
+          <div class="card-label">Store status</div>
+          <div class="card-value">Not configured</div>
+          <div class="card-note">Store setup will be connected next.</div>
+        </article>
       </div>
 
-      <section class="dashboard-stats" aria-label="Store overview">
-        <article class="dashboard-card">
-          <div class="dashboard-card-label">Total products</div>
-          <div class="dashboard-card-value">—</div>
-          <div class="dashboard-card-note">Your catalogue will appear here</div>
-        </article>
+      <section class="setup-card">
+        <h2>Let's set up your business</h2>
+        <p class="muted">
+          Your account is signed in. The next step is connecting your seller
+          profile, store creation, products and orders to this dashboard.
+        </p>
 
-        <article class="dashboard-card">
-          <div class="dashboard-card-label">Total orders</div>
-          <div class="dashboard-card-value">—</div>
-          <div class="dashboard-card-note">Your customer orders will appear here</div>
-        </article>
-
-        <article class="dashboard-card">
-          <div class="dashboard-card-label">Total sales</div>
-          <div class="dashboard-card-value">—</div>
-          <div class="dashboard-card-note">Your sales summary will appear here</div>
-        </article>
+        <div class="setup-actions">
+          <a class="button button-primary" href="/">Visit Kivo homepage</a>
+          <button class="button button-secondary" id="check-session">
+            Check session again
+          </button>
+        </div>
       </section>
+    </section>
 
-      <section class="dashboard-main-grid">
-        <article class="dashboard-card" id="store-setup">
-          <h2>Let's get your store ready</h2>
-          <p>Complete these steps to prepare your online storefront.</p>
+    <div class="footer">Kivo · Your business, better connected.</div>
+  </main>
 
-          <div class="setup-step">
-            <div class="setup-number">1</div>
-            <div>
-              <strong>Create your store</strong>
-              <p>Choose your business name and your store's unique link.</p>
-              <a class="setup-link" href="#" data-coming-soon>
-                Create my store →
-              </a>
-            </div>
-          </div>
-
-          <div class="setup-step">
-            <div class="setup-number">2</div>
-            <div>
-              <strong>Add your first product</strong>
-              <p>Set up your product catalogue, prices and images.</p>
-              <a class="setup-link" href="#" data-coming-soon>
-                Add a product →
-              </a>
-            </div>
-          </div>
-
-          <div class="setup-step">
-            <div class="setup-number">3</div>
-            <div>
-              <strong>Prepare to receive orders</strong>
-              <p>Configure your store's checkout and payment options.</p>
-              <a class="setup-link" href="#" data-coming-soon>
-                Set up checkout →
-              </a>
-            </div>
-          </div>
-        </article>
-
-        <aside class="dashboard-card">
-          <h2>Your account</h2>
-          <p>You're signed in to Kivo.</p>
-
-          <div id="account-email" class="account-email">
-            Checking your account...
-          </div>
-
-          <p>Once your store is created, you'll be able to manage its products, orders and settings here.</p>
-
-          <a href="/" class="setup-link">← Back to homepage</a>
-        </aside>
-      </section>
-    </main>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = "https://uhgnuuuvjkzfipynnhzk.supabase.co";
-    const SUPABASE_PUBLIC_KEY = "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+    (() => {
+      "use strict";
 
-    const supabaseClient = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_PUBLIC_KEY
-    );
+      // Kivo's public client configuration.
+      // Never put the Supabase service-role key in browser code.
+      const SUPABASE_URL =
+        "https://uhgnuuuvjkzfipynnhzk.supabase.co";
 
-    const message = document.getElementById("dashboard-message");
-    const accountEmail = document.getElementById("account-email");
-    const signOutButton = document.getElementById("sign-out-button");
+      const SUPABASE_PUBLIC_KEY =
+        "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
 
-    async function initializeDashboard() {
-      try {
-        const { data, error } = await supabaseClient.auth.getSession();
+      const LOGIN_URL = "/auth/login.html";
+      const API_ME_URL = "/api/me";
 
-        if (error) throw error;
+      const statusBox = document.getElementById("status");
+      const emailBox = document.getElementById("user-email");
+      const welcomeTitle = document.getElementById("welcome-title");
+      const dashboardContent = document.getElementById("dashboard-content");
+      const signOutButton = document.getElementById("sign-out");
+      const checkSessionButton = document.getElementById("check-session");
 
-        const session = data.session;
+      let supabaseClient;
+      let currentUser = null;
+      let busy = false;
 
-        if (!session) {
-          window.location.replace("/auth/login.html");
+      function showStatus(message, type = "info") {
+        statusBox.textContent = message;
+        statusBox.className = "status show " + type;
+      }
+
+      function showDashboard(user) {
+        currentUser = user;
+        emailBox.textContent = user.email || "Signed-in account";
+        welcomeTitle.textContent = "Welcome to Kivo";
+        dashboardContent.classList.remove("hidden");
+        signOutButton.disabled = false;
+      }
+
+      function hideDashboard() {
+        currentUser = null;
+        emailBox.textContent = "Not signed in";
+        welcomeTitle.textContent = "Let's get you signed in";
+        dashboardContent.classList.add("hidden");
+        signOutButton.disabled = true;
+      }
+
+      function getClient() {
+        if (supabaseClient) return supabaseClient;
+
+        if (!window.supabase || !window.supabase.createClient) {
+          throw new Error("The Supabase library did not load. Refresh the page and try again.");
+        }
+
+        supabaseClient = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_PUBLIC_KEY,
+          {
+            auth: {
+              // We exchange Google's PKCE code ourselves below.
+              detectSessionInUrl: false,
+              flowType: "pkce",
+              persistSession: true,
+              autoRefreshToken: true,
+              storageKey: "kivo-auth-token"
+            }
+          }
+        );
+
+        return supabaseClient;
+      }
+
+      async function establishSession(client) {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+        const authError =
+          url.searchParams.get("error_description") ||
+          url.searchParams.get("error");
+
+        if (authError) {
+          throw new Error("Google sign-in returned an error: " + authError);
+        }
+
+        if (code) {
+          showStatus("Completing Google sign-in...", "info");
+
+          // Exchange the one-time PKCE authorization code for a session.
+          const { error } = await client.auth.exchangeCodeForSession(code);
+
+          if (error) {
+            throw new Error(
+              "Could not complete Google sign-in: " + error.message
+            );
+          }
+
+          // Remove the one-time code from the address bar.
+          window.history.replaceState(
+            {},
+            document.title,
+            url.pathname + url.hash
+          );
+        }
+
+        const { data, error } = await client.auth.getSession();
+
+        if (error) {
+          throw new Error("Could not read your sign-in session: " + error.message);
+        }
+
+        if (!data.session) {
+          return null;
+        }
+
+        return data.session;
+      }
+
+      async function verifyWithBackend(session) {
+        showStatus("Sign-in received. Checking your Kivo account...", "info");
+
+        let response;
+
+        try {
+          response = await fetch(API_ME_URL, {
+            method: "GET",
+            headers: {
+              "Authorization": "Bearer " + session.access_token,
+              "Accept": "application/json"
+            },
+            cache: "no-store"
+          });
+        } catch (error) {
+          showStatus(
+            "Your Supabase session exists, but Kivo's backend could not be reached. " +
+            "Your sign-in has not been discarded. Check your connection and try again.",
+            "error"
+          );
           return;
         }
 
-        const response = await fetch("/api/me", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
+        const responseText = await response.text();
+        let result = {};
 
-        if (response.status === 401 || response.status === 403) {
-          await supabaseClient.auth.signOut();
-          window.location.replace("/auth/login.html");
-          return;
+        try {
+          result = responseText ? JSON.parse(responseText) : {};
+        } catch {
+          result = { message: responseText };
         }
 
         if (!response.ok) {
-          throw new Error("We couldn't verify your account with Kivo's backend.");
+          const detail =
+            result.error ||
+            result.message ||
+            ("HTTP " + response.status);
+
+          showStatus(
+            "You have a Supabase session, but Kivo's backend verification failed (" +
+            detail +
+            "). You have not been automatically signed out. We need to fix this check.",
+            "error"
+          );
+          return;
         }
 
-        const account = await response.json();
+        // Do not require a particular JSON property such as "success":
+        // different valid /api/me response shapes may omit that property.
+        showDashboard(session.user);
 
-        accountEmail.textContent =
-          account.email || session.user.email || "Signed-in account";
-
-        message.textContent =
-          "Your account is verified. Your seller dashboard is ready for store setup.";
-
-      } catch (error) {
-        console.error("Dashboard initialization failed:", error);
-        message.textContent =
-          "We couldn't verify your account. Please refresh the page or sign in again.";
-        message.classList.add("dashboard-error");
-      }
-    }
-
-    signOutButton.addEventListener("click", async () => {
-      signOutButton.disabled = true;
-      signOutButton.textContent = "Signing out...";
-
-      const { error } = await supabaseClient.auth.signOut();
-
-      if (error) {
-        message.textContent = "Sign out failed. Please try again.";
-        message.classList.add("dashboard-error");
-        signOutButton.disabled = false;
-        signOutButton.textContent = "Sign out";
-        return;
+        showStatus(
+          "Your sign-in session is active and Kivo's backend accepted your request.",
+          "success"
+        );
       }
 
-      window.location.replace("/auth/login.html");
-    });
+      async function checkSession() {
+        if (busy) return;
+        busy = true;
+        checkSessionButton.disabled = true;
 
-    document.querySelectorAll("[data-coming-soon]").forEach((link) => {
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
-        message.textContent =
-          "This feature is not connected yet. We'll build it in the next steps.";
-        document.getElementById("store-setup").scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
+        try {
+          const client = getClient();
+          const session = await establishSession(client);
+
+          if (!session) {
+            hideDashboard();
+
+            // Keep the page here with an explanation instead of creating
+            // another immediate redirect loop.
+            showStatus(
+              "No active sign-in session was found. Please use the button below to sign in again.",
+              "error"
+            );
+
+            if (!document.getElementById("login-again")) {
+              const button = document.createElement("a");
+              button.id = "login-again";
+              button.className = "button button-primary";
+              button.href = LOGIN_URL;
+              button.textContent = "Go to sign in";
+              checkSessionButton.parentElement.appendChild(button);
+            }
+
+            return;
+          }
+
+          await verifyWithBackend(session);
+        } catch (error) {
+          hideDashboard();
+          showStatus(
+            error && error.message
+              ? error.message
+              : "An unexpected sign-in error occurred.",
+            "error"
+          );
+
+          if (!document.getElementById("login-again")) {
+            const button = document.createElement("a");
+            button.id = "login-again";
+            button.className = "button button-primary";
+            button.href = LOGIN_URL;
+            button.textContent = "Return to sign in";
+            checkSessionButton.parentElement.appendChild(button);
+          }
+        } finally {
+          busy = false;
+          checkSessionButton.disabled = false;
+        }
+      }
+
+      signOutButton.addEventListener("click", async () => {
+        signOutButton.disabled = true;
+
+        try {
+          const client = getClient();
+          const { error } = await client.auth.signOut();
+
+          if (error) {
+            showStatus("Sign-out failed: " + error.message, "error");
+            signOutButton.disabled = false;
+            return;
+          }
+
+          window.location.replace(LOGIN_URL);
+        } catch (error) {
+          showStatus(
+            error.message || "Could not sign out. Please try again.",
+            "error"
+          );
+          signOutButton.disabled = false;
+        }
       });
-    });
 
-    initializeDashboard();
+      checkSessionButton.addEventListener("click", () => {
+        checkSession();
+      });
+
+      // Keep the dashboard responsive to sign-in/sign-out changes.
+      try {
+        const client = getClient();
+
+        client.auth.onAuthStateChange((event, session) => {
+          if (event === "SIGNED_OUT") {
+            hideDashboard();
+          }
+        });
+      } catch (error) {
+        showStatus(error.message, "error");
+      }
+
+      checkSession();
+    })();
   </script>
 </body>
 </html>
