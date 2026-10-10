@@ -1,48 +1,79 @@
-/* =========================================
-   KIVO — APP.JS
-   ========================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
-  initMobileMenu();
+  initNavigation();
   initSmoothScrolling();
-  initButtonStates();
+  initCurrentYear();
 });
 
-/* =========================================
-   MOBILE MENU
-   ========================================= */
+function initNavigation() {
+  const menuButton = document.getElementById("menu-button");
+  const siteMenu = document.getElementById("site-menu");
+  const backdrop = document.getElementById("menu-backdrop");
 
-function initMobileMenu() {
-  const menuToggle = document.querySelector(".menu-toggle");
-  const mobileMenu = document.querySelector(".mobile-menu");
+  if (!menuButton || !siteMenu || !backdrop) {
+    console.warn("Kivo navigation elements were not found.");
+    return;
+  }
 
-  if (!menuToggle || !mobileMenu) return;
+  function openMenu() {
+    siteMenu.hidden = false;
+    backdrop.hidden = false;
 
-  menuToggle.addEventListener("click", () => {
-    const isOpen = mobileMenu.classList.toggle("is-open");
+    menuButton.setAttribute("aria-expanded", "true");
+    menuButton.setAttribute("aria-label", "Close navigation menu");
 
-    menuToggle.setAttribute("aria-expanded", String(isOpen));
+    document.body.classList.add("menu-open");
+  }
 
-    mobileMenu.style.display = isOpen ? "block" : "none";
+  function closeMenu() {
+    siteMenu.hidden = true;
+    backdrop.hidden = true;
+
+    menuButton.setAttribute("aria-expanded", "false");
+    menuButton.setAttribute("aria-label", "Open navigation menu");
+
+    document.body.classList.remove("menu-open");
+  }
+
+  menuButton.addEventListener("click", () => {
+    const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+
+    if (isOpen) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
   });
+
+  backdrop.addEventListener("click", closeMenu);
+
+  siteMenu.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", closeMenu);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMenu();
+    }
+  });
+
+  closeMenu();
 }
 
-/* =========================================
-   SMOOTH SCROLLING
-   ========================================= */
-
 function initSmoothScrolling() {
-  const links = document.querySelectorAll('a[href^="#"]');
-
-  links.forEach((link) => {
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener("click", (event) => {
       const targetId = link.getAttribute("href");
 
-      if (!targetId || targetId === "#") return;
+      if (!targetId || targetId === "#") {
+        return;
+      }
 
       const target = document.querySelector(targetId);
 
-      if (!target) return;
+      if (!target) {
+        return;
+      }
 
       event.preventDefault();
 
@@ -50,30 +81,18 @@ function initSmoothScrolling() {
         behavior: "smooth",
         block: "start"
       });
+
+      if (window.location.hash !== targetId) {
+        history.replaceState(null, "", targetId);
+      }
     });
   });
 }
 
-/* =========================================
-   BUTTON INTERACTIONS
-   ========================================= */
+function initCurrentYear() {
+  const yearElement = document.getElementById("current-year");
 
-function initButtonStates() {
-  const buttons = document.querySelectorAll("[data-action]");
-
-  buttons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const action = button.dataset.action;
-
-      if (!action) return;
-
-      if (action === "login") {
-        console.log("Login action triggered.");
-      }
-
-      if (action === "signup") {
-        console.log("Signup action triggered.");
-      }
-    });
-  });
+  if (yearElement) {
+    yearElement.textContent = new Date().getFullYear();
+  }
 }

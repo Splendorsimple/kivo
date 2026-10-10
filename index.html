@@ -1,124 +1,475 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f7f7f8">
-<meta name="description" content="Kivo — Sell anywhere. Manage everything.">
-<link rel="icon" href="assets/logo/kivo-icon.png" type="image/png">
-<title>Kivo — Sell anywhere. Manage everything.</title>
-<link rel="stylesheet" href="css/global.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#faf9f6">
+  <meta name="description" content="Kivo gives social sellers one simple home for their products, orders, and online storefront.">
+  <title>Kivo — Your social sales. One simple home.</title>
+  <link rel="icon" type="image/png" href="assets/logo/kivo-icon.png">
+  <link rel="stylesheet" href="css/global.css">
 </head>
-<body>
-<header class="site-header">
-  <div class="container header-inner">
-    <a class="brand" href="/" aria-label="Kivo home">
-      <img class="logo logo-wordmark" src="assets/logo/kivo-wordmark.png" alt="Kivo">
-      <img class="logo logo-icon" src="assets/logo/kivo-icon.png" alt="Kivo">
-    </a>
-    <nav class="desktop-nav" aria-label="Primary navigation">
-      <a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#sellers">For sellers</a>
-    </nav>
-    <div class="header-actions"><a class="button button-ghost" href="#">Log in</a><a class="button button-primary" href="#">Get started</a></div>
-    <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
-  </div>
-</header>
-<div class="mobile-menu" id="mobile-menu" aria-hidden="true">
-  <div class="mobile-menu-inner">
-    <a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#sellers">For sellers</a>
-    <div class="menu-divider"></div><a href="#">Log in</a><a class="button button-primary" href="#">Get started</a>
-  </div>
-</div>
 
-<main>
-<section class="hero">
-  <div class="container hero-grid">
-    <div class="hero-copy">
-      <p class="eyebrow">Commerce tools for social sellers</p>
-      <h1>Sell anywhere.<br>Manage everything.</h1>
-      <p class="hero-description">Kivo gives social sellers one simple place to manage products, orders, customers, inventory and sales.</p>
-      <div class="hero-actions"><a class="button button-primary" href="#">Start selling</a><a class="button button-secondary" href="#features">Explore Kivo</a></div>
-      <p class="hero-note">Built for sellers on WhatsApp, Instagram, TikTok and beyond.</p>
-    </div>
-    <div class="dashboard-window" aria-label="Kivo dashboard preview">
-      <div class="dashboard-topbar">
-        <div class="dashboard-brand"><img src="assets/logo/kivo-icon.png" alt="" class="dashboard-icon"><span>Workspace</span></div>
-        <div class="dashboard-user"><span class="online-dot"></span><span class="avatar">A</span></div>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <!-- Navigation -->
+  <header class="site-header">
+    <div class="nav-container">
+      <a class="brand" href="/" aria-label="Kivo home">
+        <img src="assets/logo/kivo-wordmark.png" alt="Kivo">
+      </a>
+
+      <div class="nav-actions">
+        <a class="nav-login" href="/auth/login.html">Log in</a>
+        <a class="nav-cta" href="/auth/login.html">Build my store <span aria-hidden="true">↗</span></a>
+
+        <button
+          class="menu-button"
+          id="menu-button"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-controls="site-menu"
+          aria-expanded="false"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
-      <div class="dashboard-layout">
-        <aside class="dashboard-sidebar">
-          <span class="sidebar-label">MENU</span>
-          <a class="dashboard-nav active" href="#">Overview</a><a class="dashboard-nav" href="#">Products</a><a class="dashboard-nav" href="#">Orders</a><a class="dashboard-nav" href="#">Inventory</a><a class="dashboard-nav" href="#">Customers</a>
-        </aside>
-        <div class="dashboard-main">
-          <div class="dashboard-heading"><div><span class="dashboard-kicker">Overview</span><h3>Good morning, Alex</h3></div><button class="date-button" type="button">This month</button></div>
-          <div class="stats">
-            <div class="stat"><span>Total sales</span><strong>₦842,500</strong><small>+12.8% this month</small></div>
-            <div class="stat"><span>Orders</span><strong>128</strong><small>+8.4% this month</small></div>
-            <div class="stat"><span>Customers</span><strong>94</strong><small>+14 new customers</small></div>
+    </div>
+
+    <div class="menu-backdrop" id="menu-backdrop" hidden></div>
+
+    <nav class="site-menu" id="site-menu" aria-label="Main navigation" hidden>
+      <p class="menu-heading">Explore Kivo</p>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">Frequently asked questions</a>
+      <a href="/auth/login.html">Log in to your account</a>
+      <a class="button button-primary menu-cta" href="/auth/login.html">Create your seller account <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <!-- Hero -->
+    <section class="hero section-shell">
+      <div class="hero-copy">
+        <div class="eyebrow">BUILT FOR SOCIAL SELLERS</div>
+
+        <h1>Your social sales.<br>One <span>simple home.</span></h1>
+
+        <p class="hero-description">
+          Your customers find you on social media. Kivo gives your products,
+          orders, and storefront one organised place to call home.
+        </p>
+
+        <div class="hero-actions">
+          <a class="button button-primary" href="/auth/login.html">
+            Build my store <span aria-hidden="true">↗</span>
+          </a>
+          <a class="button button-secondary" href="#how-it-works">
+            See how it works <span aria-hidden="true">↓</span>
+          </a>
+        </div>
+
+        <p class="hero-note">
+          Made for ambitious sellers. Designed to keep things simple.
+        </p>
+      </div>
+
+      <!-- Decorative product preview; not live account data -->
+      <div class="hero-visual" aria-label="Illustration of a seller dashboard and online storefront">
+        <div class="preview-glow"></div>
+
+        <div class="floating-label">
+          <span class="floating-label-icon" aria-hidden="true">✓</span>
+          One place for your sales
+        </div>
+
+        <div class="dashboard-preview">
+          <div class="preview-topbar">
+            <div class="preview-brand">
+              <span class="preview-brand-icon" aria-hidden="true">k</span>
+              Kivo dashboard
+            </div>
+            <span class="preview-status">Your business, organised</span>
           </div>
-          <div class="orders">
-            <div class="orders-heading"><strong>Recent orders</strong><a href="#">View all</a></div>
-            <div class="order"><div><strong>Order #1048</strong><span>Today · 10:42 AM</span></div><b>₦24,500</b><em class="paid">Paid</em></div>
-            <div class="order"><div><strong>Order #1047</strong><span>Today · 09:18 AM</span></div><b>₦18,000</b><em class="processing">Processing</em></div>
-            <div class="order"><div><strong>Order #1046</strong><span>Yesterday · 06:31 PM</span></div><b>₦31,200</b><em class="pending">Pending</em></div>
+
+          <div class="preview-body">
+            <div class="preview-welcome">
+              <div>
+                <h3>Your business at a glance</h3>
+                <p>A clearer view of your store activity.</p>
+              </div>
+              <div class="preview-avatar" aria-hidden="true">KS</div>
+            </div>
+
+            <div class="preview-stats">
+              <div class="preview-stat">
+                <span class="preview-stat-label">Products</span>
+                <strong>Catalogue</strong>
+                <span class="preview-stat-change">In one place</span>
+              </div>
+
+              <div class="preview-stat">
+                <span class="preview-stat-label">Orders</span>
+                <strong>Tracking</strong>
+                <span class="preview-stat-change">Stay organised</span>
+              </div>
+
+              <div class="preview-stat">
+                <span class="preview-stat-label">Your store</span>
+                <strong>Online</strong>
+                <span class="preview-stat-change">Share your link</span>
+              </div>
+            </div>
+
+            <div class="preview-orders">
+              <div class="preview-orders-heading">
+                <span>Your workflow</span>
+                <span>Made simpler ↗</span>
+              </div>
+
+              <div class="preview-order">
+                <div class="order-avatar" aria-hidden="true">01</div>
+                <div class="order-person">
+                  <strong>Add your products</strong>
+                  <small>Build your catalogue</small>
+                </div>
+                <div class="order-amount">
+                  <strong>Step 1</strong>
+                  <small>Organise</small>
+                </div>
+              </div>
+
+              <div class="preview-order">
+                <div class="order-avatar orange" aria-hidden="true">02</div>
+                <div class="order-person">
+                  <strong>Share your storefront</strong>
+                  <small>Send your link to customers</small>
+                </div>
+                <div class="order-amount">
+                  <strong>Step 2</strong>
+                  <small>Connect</small>
+                </div>
+              </div>
+
+              <div class="preview-order">
+                <div class="order-avatar green" aria-hidden="true">03</div>
+                <div class="order-person">
+                  <strong>Manage your orders</strong>
+                  <small>Keep track of what comes in</small>
+                </div>
+                <div class="order-amount">
+                  <strong>Step 3</strong>
+                  <small>Manage</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="storefront-float">
+          <div class="storefront-top">
+            <div class="storefront-logo" aria-hidden="true">N</div>
+            <div>
+              <strong>Nora Studio</strong>
+              <small>Storefront concept</small>
+            </div>
+          </div>
+
+          <div class="store-products">
+            <div>
+              <div class="store-product-art">
+                <div class="product-shape"></div>
+              </div>
+              <span class="store-product-name">Everyday bag</span>
+              <span class="store-product-price">Product preview</span>
+            </div>
+
+            <div>
+              <div class="store-product-art brown">
+                <div class="product-shape bag"></div>
+              </div>
+              <span class="store-product-name">Classic tote</span>
+              <span class="store-product-price">Product preview</span>
+            </div>
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- Social platform logos -->
+    <section class="platform-strip" aria-labelledby="platform-heading">
+      <div class="section-shell">
+        <p id="platform-heading">Made for the places you already sell</p>
+
+        <div class="platform-list">
+          <div class="platform-item">
+            <span class="platform-symbol whatsapp" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M20 11.7a8.1 8.1 0 0 1-12 7.1L4 20l1.2-3.8A8.1 8.1 0 1 1 20 11.7Z"
+                  stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8.5 8.1c.3-.6.6-.6 1-.6h.4c.2 0 .4.1.5.4l.8 1.8c.1.2.1.4-.1.6l-.6.7c-.2.2-.2.4 0 .6.6 1 1.4 1.8 2.4 2.3.2.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.7.8c.3.1.4.3.4.5 0 .5-.2 1-.6 1.3-.5.5-1.2.7-1.9.6-1.2-.2-2.5-.9-3.7-2-1.2-1.1-2-2.4-2.3-3.6-.2-.9 0-1.7.5-2.2Z"
+                  fill="currentColor"/>
+              </svg>
+            </span>
+            <span>WhatsApp</span>
+          </div>
+
+          <div class="platform-item">
+            <span class="platform-symbol instagram" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2"
+                  stroke="currentColor" stroke-width="1.8"/>
+                <circle cx="12" cy="12" r="4.1"
+                  stroke="currentColor" stroke-width="1.8"/>
+                <circle cx="17.6" cy="6.8" r="1.1" fill="currentColor"/>
+              </svg>
+            </span>
+            <span>Instagram</span>
+          </div>
+
+          <div class="platform-item">
+            <span class="platform-symbol tiktok" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M14 3v11.2a4.1 4.1 0 1 1-3.5-4.1"
+                  stroke="#25F4EE" stroke-width="3.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14 3v11.2a4.1 4.1 0 1 1-3.5-4.1"
+                  stroke="#FE2C55" stroke-width="2.1"
+                  stroke-linecap="round" stroke-linejoin="round"
+                  transform="translate(1.2 .4)"/>
+                <path d="M14 3v7.1c1.5 1.5 3.2 2.2 5.1 2.2"
+                  stroke="currentColor" stroke-width="3.1"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span>TikTok</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section section-shell" id="how-it-works">
+      <div class="section-heading">
+        <span class="section-kicker">HOW KIVO WORKS</span>
+        <h2>Less back-and-forth.<br>More business.</h2>
+        <p>A straightforward way to organise the essentials of selling online.</p>
+      </div>
+
+      <div class="steps-grid">
+        <article class="step-card">
+          <div class="step-number">01</div>
+          <h3>Set up your store</h3>
+          <p>Bring your products together in one catalogue that is easier to maintain.</p>
+        </article>
+
+        <article class="step-card">
+          <div class="step-number">02</div>
+          <h3>Share one link</h3>
+          <p>Give customers a storefront link they can open and browse online.</p>
+        </article>
+
+        <article class="step-card">
+          <div class="step-number">03</div>
+          <h3>Manage your sales</h3>
+          <p>Keep products and order activity organised as your business grows.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section features-section" id="features">
+      <div class="section-shell">
+        <div class="section-heading">
+          <span class="section-kicker">ONE HOME FOR YOUR BUSINESS</span>
+          <h2>Built around the way you sell.</h2>
+          <p>Practical tools for sellers who want a more organised way to run their online business.</p>
+        </div>
+
+        <div class="features-grid">
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">▦</div>
+            <h3>Product catalogue</h3>
+            <p>Keep product details, prices, images, and available options organised together.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">↗</div>
+            <h3>Shareable storefront</h3>
+            <p>Give customers one place to explore your products from a link you can share.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">☷</div>
+            <h3>Order management</h3>
+            <p>Keep order information and fulfilment activity together instead of scattered across chats.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">⌁</div>
+            <h3>Business overview</h3>
+            <p>Work towards a clearer view of your store activity as your Kivo setup develops.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="section section-shell" id="pricing">
+      <div class="section-heading">
+        <span class="section-kicker">SIMPLE, TRANSPARENT PRICING</span>
+        <h2>Choose the plan for your next stage.</h2>
+        <p>Pick a plan based on the size of your catalogue and the team you need.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <article class="pricing-card">
+          <h3 class="plan-name">Beginner</h3>
+          <p class="plan-description">For sellers getting organised.</p>
+          <div class="plan-price">₦4,000 <span>/ month</span></div>
+          <p class="plan-billing">Monthly subscription</p>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li>Up to 30 products</li>
+            <li>1 store</li>
+            <li>1 team member</li>
+          </ul>
+          <a class="button button-secondary plan-button" href="/auth/login.html">Get started</a>
+        </article>
+
+        <article class="pricing-card featured">
+          <span class="plan-badge">Popular choice</span>
+          <h3 class="plan-name">Growth</h3>
+          <p class="plan-description">For sellers building momentum.</p>
+          <div class="plan-price">₦9,000 <span>/ month</span></div>
+          <p class="plan-billing">Monthly subscription</p>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li>Up to 150 products</li>
+            <li>1 store</li>
+            <li>2 team members</li>
+          </ul>
+          <a class="button button-primary plan-button" href="/auth/login.html">Get started</a>
+        </article>
+
+        <article class="pricing-card">
+          <h3 class="plan-name">Pro</h3>
+          <p class="plan-description">For established, busy sellers.</p>
+          <div class="plan-price">₦15,000 <span>/ month</span></div>
+          <p class="plan-billing">Monthly subscription</p>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li>Up to 500 products</li>
+            <li>1 store</li>
+            <li>5 team members</li>
+          </ul>
+          <a class="button button-secondary plan-button" href="/auth/login.html">Get started</a>
+        </article>
+
+        <article class="pricing-card">
+          <h3 class="plan-name">Platinum</h3>
+          <p class="plan-description">For sellers running multiple stores.</p>
+          <div class="plan-price">₦22,000 <span>/ month</span></div>
+          <p class="plan-billing">Monthly subscription</p>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li>Unlimited products</li>
+            <li>Up to 3 stores</li>
+            <li>15 team members per store</li>
+          </ul>
+          <a class="button button-secondary plan-button" href="/auth/login.html">Get started</a>
+        </article>
+      </div>
+
+      <p class="annual-note">
+        Annual subscription options are planned to offer savings compared with monthly billing.
+        Confirm the available billing options before subscribing.
+      </p>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section faq-section" id="faq">
+      <div class="section-shell">
+        <div class="section-heading">
+          <span class="section-kicker">GOOD QUESTIONS</span>
+          <h2>Before you get started.</h2>
+          <p>A few things to know about Kivo.</p>
+        </div>
+
+        <div class="faq-list">
+          <details>
+            <summary>Who is Kivo for?</summary>
+            <p>Kivo is being built for social sellers who want a more organised way to manage products, share a storefront, and keep track of orders.</p>
+          </details>
+
+          <details>
+            <summary>Do my customers need a Kivo account?</summary>
+            <p>The intended shopping experience supports guest checkout, so customers can shop without needing a seller account. The complete checkout flow must be implemented and tested before this is available in production.</p>
+          </details>
+
+          <details>
+            <summary>Can I share my store on social media?</summary>
+            <p>The storefront is designed to be shared through channels such as WhatsApp, Instagram, and TikTok. Availability depends on the relevant storefront features being implemented.</p>
+          </details>
+
+          <details>
+            <summary>Can I change my plan later?</summary>
+            <p>The plans are structured for different business sizes. Plan changes should be handled through the subscription and billing features once those flows are available.</p>
+          </details>
+
+          <details>
+            <summary>Does Kivo receive my customers' sales payments?</summary>
+            <p>Kivo's subscription fee is separate from the money you receive for your own sales. Seller payment processing needs to be configured and verified before accepting live payments.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final-cta-wrap">
+      <div class="section-shell">
+        <div class="final-cta">
+          <span class="section-kicker">YOUR BUSINESS, MORE ORGANISED</span>
+          <h2>Give your social sales a home.</h2>
+          <p>Bring your products, storefront, and sales workflow together with Kivo.</p>
+          <a class="button" href="/auth/login.html">
+            Explore Kivo <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="section-shell footer-inner">
+      <div class="footer-brand">
+        <a class="brand" href="/" aria-label="Kivo home">
+          <img src="assets/logo/kivo-wordmark.png" alt="Kivo">
+        </a>
+        <p class="footer-note">One simple home for your social sales.</p>
+      </div>
+
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQs</a>
+        <a href="/auth/login.html">Log in</a>
+      </div>
+
+      <p class="footer-copyright">
+        © <span id="current-year">2026</span> Kivo. All rights reserved.
+      </p>
     </div>
-  </div>
-</section>
+  </footer>
 
-<section class="section" id="features">
-<div class="container">
-  <div class="section-heading"><p class="eyebrow">Everything in one place</p><h2>The tools you need to run your business.</h2><p>Kivo brings the everyday parts of selling together so you can spend less time managing and more time selling.</p></div>
-  <div class="feature-grid">
-    <article class="card"><span class="number">01</span><h3>Products</h3><p>Add products, prices, images and details from one organized workspace.</p></article>
-    <article class="card"><span class="number">02</span><h3>Orders</h3><p>Keep every order organized from the moment it comes in until it is completed.</p></article>
-    <article class="card"><span class="number">03</span><h3>Inventory</h3><p>Know what is available and avoid losing sales because you forgot your stock levels.</p></article>
-    <article class="card"><span class="number">04</span><h3>Customers</h3><p>Keep customer information and purchase history together in one place.</p></article>
-    <article class="card"><span class="number">05</span><h3>Receipts</h3><p>Give customers clear receipts for purchases and keep your records organized.</p></article>
-    <article class="card"><span class="number">06</span><h3>Analytics</h3><p>Understand your sales and see how your business is performing over time.</p></article>
-  </div>
-</div>
-</section>
-
-<section class="section channels">
-<div class="container">
-  <div class="section-heading"><p class="eyebrow">Sell wherever your customers are</p><h2>One business.<br>Every channel.</h2><p>Bring your social selling activity into one simple workspace.</p></div>
-  <div class="channel-grid">
-    <article class="card channel"><span class="channel-icon">W</span><h3>WhatsApp</h3><p>Turn conversations into organized orders.</p></article>
-    <article class="card channel"><span class="channel-icon">I</span><h3>Instagram</h3><p>Keep products, customers and sales organized.</p></article>
-    <article class="card channel"><span class="channel-icon">T</span><h3>TikTok</h3><p>Share your Kivo store where customers discover you.</p></article>
-    <article class="card channel"><span class="channel-icon">K</span><h3>Kivo Store</h3><p>Give customers a simple storefront to browse and order.</p></article>
-  </div>
-</div>
-</section>
-
-<section class="section workflow" id="how-it-works">
-<div class="container">
-  <div class="section-heading"><p class="eyebrow">Simple from day one</p><h2>Start selling without the mess.</h2></div>
-  <div class="steps">
-    <div class="step"><span>01</span><div><h3>Create your store</h3><p>Set up your Kivo store and add the products customers should see.</p></div></div>
-    <div class="step"><span>02</span><div><h3>Share your link</h3><p>Put your store link on WhatsApp, Instagram, TikTok or anywhere customers find you.</p></div></div>
-    <div class="step"><span>03</span><div><h3>Receive orders</h3><p>Customers browse your products and place orders through your store.</p></div></div>
-    <div class="step"><span>04</span><div><h3>Manage everything</h3><p>Track orders, inventory, customers and sales from Kivo.</p></div></div>
-  </div>
-</div>
-</section>
-
-<section class="section cta" id="sellers">
-<div class="container"><div class="cta-box"><div><p class="eyebrow">Built for social sellers</p><h2>Your business is everywhere. Your tools should be too.</h2><p>Bring your products, orders, customers and sales together with Kivo.</p><a class="button button-primary" href="#">Start selling with Kivo</a></div><img src="assets/logo/kivo-icon.png" alt="" class="cta-icon" aria-hidden="true"></div></div>
-</section>
-</main>
-
-<footer class="footer">
-<div class="container footer-top">
-  <div><a class="brand" href="/" aria-label="Kivo home"><img class="logo logo-wordmark" src="assets/logo/kivo-wordmark.png" alt="Kivo"><img class="logo logo-icon" src="assets/logo/kivo-icon.png" alt="Kivo"></a><p>Sell anywhere. Manage everything.</p></div>
-  <div class="footer-links"><div><b>Product</b><a href="#features">Features</a><a href="#how-it-works">How it works</a></div><div><b>Company</b><a href="#">About</a><a href="#">Contact</a></div><div><b>Legal</b><a href="#">Privacy</a><a href="#">Terms</a></div></div>
-</div>
-<div class="container footer-bottom"><span>© 2026 Kivo. All rights reserved.</span><span>Built for modern sellers.</span></div>
-</footer>
-<script src="js/app.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
