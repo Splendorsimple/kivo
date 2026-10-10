@@ -5,34 +5,114 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f7fc">
-  <title>Sign in to Kivo</title>
+  <meta name="description" content="Sign in or create your Kivo seller account.">
+  <title>Sign in | Kivo</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
-    *{box-sizing:border-box}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f8f7fc;color:#191620;font-family:Inter,Arial,sans-serif}
-    .card{width:100%;max-width:420px;padding:32px;background:#fff;border:1px solid #e9e5f0;border-radius:20px;box-shadow:0 12px 40px #2610440a}
-    .brand{font-size:28px;font-weight:800;letter-spacing:-1px;color:#6d28d9}
-    h1{margin:25px 0 8px;font-size:28px;letter-spacing:-1px}
-    p{color:#777381;line-height:1.6;font-size:14px}
-    label{display:block;margin:18px 0 7px;font-size:13px;font-weight:650}
-    input{width:100%;padding:13px;border:1px solid #ddd8e8;border-radius:10px;font-size:15px}
-    button{width:100%;padding:13px;margin-top:14px;border:0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
-    button:disabled{opacity:.55;cursor:wait}
-    .primary{background:#6d28d9;color:#fff}
-    .secondary{background:#f2eff8;color:#211a2b}
-    .divider{text-align:center;margin:18px 0;color:#898392;font-size:12px}
-    #message{display:none;margin-top:16px;padding:12px;border-radius:10px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
-    #message.show{display:block}
-    #message.error{background:#fff0ee;color:#a1261c}
-    #message.success{background:#eefbf3;color:#176c42}
-    .links{display:flex;justify-content:space-between;gap:12px;margin-top:18px;font-size:13px}
-    a{color:#6d28d9;text-decoration:none}
-    .note{margin-top:24px;text-align:center;font-size:12px}
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #f8f7fc;
+      color: #201b2d;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px;
+      background: #fff;
+      border: 1px solid #e9e5f0;
+      border-radius: 20px;
+      box-shadow: 0 12px 40px #2610440a;
+    }
+
+    .brand {
+      color: #6d28d9;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-decoration: none;
+    }
+
+    h1 { margin: 25px 0 8px; font-size: 28px; }
+    p { color: #777381; line-height: 1.6; font-size: 14px; }
+
+    label {
+      display: block;
+      margin: 18px 0 7px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #ddd8e8;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: .55; cursor: wait; }
+    .primary { background: #6d28d9; color: white; }
+    .secondary { background: #f2eff8; color: #211a2b; }
+
+    .divider {
+      margin: 18px 0;
+      text-align: center;
+      color: #898392;
+      font-size: 12px;
+    }
+
+    #message {
+      display: none;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    #message.show { display: block; }
+    #message.error { background: #fff0ee; color: #a1261c; }
+    #message.success { background: #eefbf3; color: #176c42; }
+
+    .links {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 18px;
+      font-size: 13px;
+    }
+
+    a { color: #6d28d9; }
+    .note { margin-top: 24px; text-align: center; font-size: 12px; }
   </style>
 </head>
+
 <body>
   <main class="card">
     <a class="brand" href="/">Kivo</a>
+
     <h1 id="heading">Welcome back</h1>
     <p id="description">Sign in to manage your business on Kivo.</p>
 
@@ -41,9 +121,12 @@
       <input id="email" type="email" autocomplete="email" required>
 
       <label for="password">Password</label>
-      <input id="password" type="password" autocomplete="current-password" required>
+      <input id="password" type="password"
+        autocomplete="current-password" minlength="6" required>
 
-      <button class="primary" id="submit-button" type="submit">Sign in</button>
+      <button class="primary" id="submit-button" type="submit">
+        Sign in
+      </button>
     </form>
 
     <button class="secondary" id="google-button" type="button">
@@ -66,6 +149,7 @@
       <a href="/">Back to homepage</a>
       <a href="/dashboard/">Dashboard</a>
     </div>
+
     <p class="note">Your business, better connected.</p>
   </main>
 
@@ -73,23 +157,37 @@
     (() => {
       "use strict";
 
-      const SUPABASE_URL = "https://uhgnuuuvjkzfipynnhzk.supabase.co";
-      const SUPABASE_PUBLIC_KEY = "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+      const SUPABASE_URL =
+        "https://uhgnuuuvjkzfipynnhzk.supabase.co";
 
-      // MUST match the dashboard configuration exactly.
+      const SUPABASE_PUBLIC_KEY =
+        "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+
       const STORAGE_KEY = "kivo-auth";
-
-      const DASHBOARD_URL = window.location.origin + "/dashboard/";
-      const LOGIN_URL = window.location.origin + "/auth/login.html";
+      const LOGIN_URL = location.origin + "/auth/login.html";
+      const DASHBOARD_URL = location.origin + "/dashboard/";
 
       const message = document.getElementById("message");
       const form = document.getElementById("auth-form");
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
       const submitButton = document.getElementById("submit-button");
+      const googleButton = document.getElementById("google-button");
       const modeButton = document.getElementById("mode-button");
+      const resetButton = document.getElementById("reset-button");
+
       let isSignup = false;
+      let resetMode = false;
       let busy = false;
 
-      const supabase = window.supabase.createClient(
+      if (!window.supabase?.createClient) {
+        message.textContent =
+          "Kivo could not load its authentication service. Refresh and try again.";
+        message.className = "show error";
+        return;
+      }
+
+      const client = window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_PUBLIC_KEY,
         {
@@ -112,9 +210,23 @@
       function setBusy(value) {
         busy = value;
         submitButton.disabled = value;
-        document.getElementById("google-button").disabled = value;
+        googleButton.disabled = value;
         modeButton.disabled = value;
-        document.getElementById("reset-button").disabled = value;
+        resetButton.disabled = value;
+      }
+
+      function showNormalLogin() {
+        resetMode = false;
+        isSignup = false;
+
+        document.getElementById("heading").textContent = "Welcome back";
+        document.getElementById("description").textContent =
+          "Sign in to manage your business on Kivo.";
+
+        submitButton.textContent = "Sign in";
+        modeButton.textContent = "Create a new account";
+        passwordInput.autocomplete = "current-password";
+        passwordInput.value = "";
       }
 
       async function verifyAndContinue(session) {
@@ -124,6 +236,7 @@
 
         try {
           const response = await fetch("/api/me", {
+            method: "GET",
             headers: {
               Authorization: "Bearer " + session.access_token,
               Accept: "application/json"
@@ -131,18 +244,21 @@
             cache: "no-store"
           });
 
-          if (!response.ok) {
-            const body = await response.text();
-            throw new Error("Account verification failed (" + response.status + "). " + body.slice(0, 250));
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(
+              "Your session could not be verified. Please sign in again."
+            );
           }
 
-          window.location.replace(DASHBOARD_URL);
+          if (!response.ok) {
+            throw new Error(
+              "Kivo's server could not verify your account. Please try again."
+            );
+          }
+
+          location.replace(DASHBOARD_URL);
         } catch (error) {
-          notify(
-            (error.message || "Could not verify your account.") +
-            " Your sign-in session has been retained. Please try again.",
-            "error"
-          );
+          notify(error.message || "Account verification failed.");
         }
       }
 
@@ -151,32 +267,52 @@
         if (busy) return;
 
         setBusy(true);
-        notify(isSignup ? "Creating your account..." : "Signing you in...", "success");
 
         try {
-          const email = document.getElementById("email").value.trim();
-          const password = document.getElementById("password").value;
+          const password = passwordInput.value;
 
-          const result = isSignup
-            ? await supabase.auth.signUp({
-                email,
-                password,
-                options: { emailRedirectTo: LOGIN_URL }
-              })
-            : await supabase.auth.signInWithPassword({ email, password });
+          if (resetMode) {
+            const { error } = await client.auth.updateUser({ password });
+            if (error) throw error;
 
-          if (result.error) throw result.error;
-
-          if (isSignup && !result.data.session) {
-            notify("Account created. Check your email for the confirmation link, then sign in.", "success");
+            showNormalLogin();
+            notify(
+              "Your password has been updated. Sign in with your new password.",
+              "success"
+            );
+            history.replaceState({}, document.title, LOGIN_URL);
             return;
           }
 
-          if (result.data.session) {
-            await verifyAndContinue(result.data.session);
-          } else {
-            notify("No active session was returned. Please try signing in again.");
+          const email = emailInput.value.trim();
+
+          if (isSignup) {
+            const { data, error } = await client.auth.signUp({
+              email,
+              password,
+              options: { emailRedirectTo: LOGIN_URL }
+            });
+
+            if (error) throw error;
+
+            if (!data.session) {
+              notify(
+                "Account created. Check your email for a confirmation link, then sign in.",
+                "success"
+              );
+              return;
+            }
+
+            await verifyAndContinue(data.session);
+            return;
           }
+
+          const { data, error } =
+            await client.auth.signInWithPassword({ email, password });
+
+          if (error) throw error;
+
+          await verifyAndContinue(data.session);
         } catch (error) {
           notify(error.message || "Authentication failed.");
         } finally {
@@ -184,14 +320,14 @@
         }
       });
 
-      document.getElementById("google-button").addEventListener("click", async () => {
+      googleButton.addEventListener("click", async () => {
         if (busy) return;
 
         setBusy(true);
         notify("Connecting to Google...", "success");
 
         try {
-          const { error } = await supabase.auth.signInWithOAuth({
+          const { error } = await client.auth.signInWithOAuth({
             provider: "google",
             options: { redirectTo: DASHBOARD_URL }
           });
@@ -204,37 +340,61 @@
       });
 
       modeButton.addEventListener("click", () => {
+        if (busy || resetMode) return;
+
         isSignup = !isSignup;
+
         document.getElementById("heading").textContent =
           isSignup ? "Create your account" : "Welcome back";
+
         document.getElementById("description").textContent =
-          isSignup ? "Create your Kivo seller account." : "Sign in to manage your business on Kivo.";
-        submitButton.textContent = isSignup ? "Create account" : "Sign in";
-        modeButton.textContent = isSignup ? "I already have an account" : "Create a new account";
-        document.getElementById("password").autocomplete =
+          isSignup
+            ? "Create your Kivo seller account."
+            : "Sign in to manage your business on Kivo.";
+
+        submitButton.textContent =
+          isSignup ? "Create account" : "Sign in";
+
+        modeButton.textContent =
+          isSignup ? "I already have an account" : "Create a new account";
+
+        passwordInput.autocomplete =
           isSignup ? "new-password" : "current-password";
+
         notify("", "success");
+        message.className = "";
       });
 
-      document.getElementById("reset-button").addEventListener("click", async () => {
+      resetButton.addEventListener("click", async () => {
         if (busy) return;
 
-        const email = document.getElementById("email").value.trim();
+        if (resetMode) {
+          showNormalLogin();
+          message.className = "";
+          return;
+        }
+
+        const email = emailInput.value.trim();
+
         if (!email) {
-          notify("Enter your email address above first.");
-          document.getElementById("email").focus();
+          notify("Enter your email address first.");
+          emailInput.focus();
           return;
         }
 
         setBusy(true);
 
         try {
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          const { error } = await client.auth.resetPasswordForEmail(email, {
             redirectTo: LOGIN_URL + "?reset=1"
           });
 
           if (error) throw error;
-          notify("If an account exists for that email, a password-reset link will be sent.", "success");
+
+          notify(
+            "If an account exists for that email, a password-reset link will be sent.",
+            "success"
+          );
         } catch (error) {
           notify(error.message || "Could not request a password reset.");
         } finally {
@@ -243,45 +403,34 @@
       });
 
       async function initialize() {
-        const url = new URL(window.location.href);
+        const url = new URL(location.href);
+        const oauthError = url.searchParams.get("error_description");
 
-        if (url.searchParams.get("error_description")) {
-          notify("Sign-in error: " + url.searchParams.get("error_description"));
+        if (oauthError) {
+          notify("Sign-in error: " + oauthError);
           return;
         }
 
         if (url.searchParams.get("reset") === "1") {
-          document.getElementById("heading").textContent = "Choose a new password";
-          document.getElementById("description").textContent = "Enter your new password below.";
+          resetMode = true;
+          document.getElementById("heading").textContent =
+            "Choose a new password";
+          document.getElementById("description").textContent =
+            "Enter your new password below.";
           submitButton.textContent = "Update password";
-
-          form.addEventListener("submit", async event => {
-            if (document.getElementById("heading").textContent !== "Choose a new password") return;
-            event.preventDefault();
-            if (busy) return;
-
-            setBusy(true);
-            try {
-              const password = document.getElementById("password").value;
-              const { error } = await supabase.auth.updateUser({ password });
-              if (error) throw error;
-              notify("Password updated. You can now sign in.", "success");
-              window.history.replaceState({}, document.title, LOGIN_URL);
-              document.getElementById("heading").textContent = "Welcome back";
-              submitButton.textContent = "Sign in";
-            } catch (error) {
-              notify(error.message || "Could not update your password.");
-            } finally {
-              setBusy(false);
-            }
-          });
+          modeButton.textContent = "Cancel password reset";
+          resetButton.textContent = "Cancel password reset";
+          passwordInput.autocomplete = "new-password";
+          passwordInput.value = "";
+          passwordInput.minLength = 6;
+          passwordInput.focus();
           return;
         }
 
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await client.auth.getSession();
 
         if (error) {
-          notify("Could not read your session: " + error.message);
+          notify("Could not read your session. Please refresh and try again.");
           return;
         }
 
@@ -290,7 +439,9 @@
         }
       }
 
-      initialize();
+      initialize().catch(error => {
+        notify(error.message || "Kivo could not initialize authentication.");
+      });
     })();
   </script>
 </body>
