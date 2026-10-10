@@ -3,279 +3,945 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f8f7fc">
-  <title>Kivo Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>Overview | Kivo</title>
+  <meta name="description" content="Manage your Kivo store, products and orders.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
-    *{box-sizing:border-box}
-    body{margin:0;background:#f8f7fc;color:#191620;font-family:Inter,Arial,sans-serif}
-    header{min-height:72px;padding:16px 6%;display:flex;align-items:center;justify-content:space-between;gap:15px;background:#fff;border-bottom:1px solid #e9e5f0}
-    .brand{display:flex;align-items:center;gap:10px;color:#191620;font-size:24px;font-weight:800;text-decoration:none}
-    .brand img{width:34px;height:34px;object-fit:contain}
-    button,.button{border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;font-size:14px;text-decoration:none;display:inline-block}
-    button:disabled{opacity:.5;cursor:wait}
-    .primary{background:#6d28d9;color:#fff}
-    .secondary{background:#f0edf7;color:#211a2b}
-    main{width:min(1050px,90%);margin:42px auto}
-    h1{font-size:clamp(28px,5vw,40px);letter-spacing:-1px;margin:10px 0}
-    h2{font-size:20px}
-    p{line-height:1.65;color:#777381}
-    .eyebrow{font-size:12px;font-weight:800;letter-spacing:1.4px;color:#6d28d9;text-transform:uppercase}
-    #status{display:none;margin:22px 0;padding:15px;border-radius:12px;line-height:1.6;overflow-wrap:anywhere}
-    #status.show{display:block}
-    #status.info{background:#f0ebff;color:#493276}
-    #status.error{background:#fff0ee;color:#a1261c}
-    #status.success{background:#eefbf3;color:#176c42}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}
-    .card,.setup{background:#fff;border:1px solid #e9e5f0;border-radius:16px;padding:23px}
-    .label{font-size:14px;color:#777381}
-    .value{font-size:26px;font-weight:800;margin-top:14px}
-    .small{font-size:12px;color:#777381;line-height:1.6;margin-top:8px}
-    .setup{margin-top:22px}
-    .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}
-    .hidden{display:none!important}
-    footer{text-align:center;color:#777381;font-size:12px;margin:40px 0 20px}
-    @media(max-width:650px){header{padding:14px 5%}.grid{grid-template-columns:1fr}main{margin-top:28px}}
+    :root {
+      --purple: #7047eb;
+      --purple-dark: #5733cb;
+      --purple-light: #f0ebff;
+      --ink: #201b2d;
+      --muted: #817b90;
+      --line: #ece9f2;
+      --surface: #ffffff;
+      --page: #f8f7fc;
+      --green: #16845b;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "DM Sans", sans-serif;
+      font-size: 14px;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+
+    .app { min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 248px;
+      padding: 26px 16px 18px;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      margin-bottom: 36px;
+    }
+
+    .brand img { width: 36px; height: 36px; object-fit: contain; }
+
+    .brand-name {
+      font: 800 25px "Manrope", sans-serif;
+      letter-spacing: -1.2px;
+    }
+
+    .workspace-label {
+      padding: 0 12px;
+      margin: 0 0 12px;
+      color: #a09aaf;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .nav { display: grid; gap: 5px; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 43px;
+      padding: 0 12px;
+      border-radius: 10px;
+      color: #6f687e;
+      font-weight: 600;
+      transition: .18s ease;
+    }
+
+    .nav-link:hover { background: #f8f6ff; color: var(--purple); }
+
+    .nav-link.active {
+      background: var(--purple-light);
+      color: var(--purple);
+    }
+
+    .nav-icon {
+      width: 20px;
+      text-align: center;
+      font-size: 17px;
+    }
+
+    .sidebar-bottom { margin-top: auto; }
+
+    .help-card {
+      background: #f8f6ff;
+      border: 1px solid #eee8ff;
+      border-radius: 13px;
+      padding: 15px;
+      margin: 0 2px 18px;
+    }
+
+    .help-card strong { display: block; margin-bottom: 7px; }
+    .help-card p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .help-card a { color: var(--purple); font-weight: 700; font-size: 12px; }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 8px 0;
+      border-top: 1px solid var(--line);
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-weight: 800;
+    }
+
+    .profile-info { min-width: 0; flex: 1; }
+    .profile-info strong { display: block; font-size: 12px; margin-bottom: 4px; }
+    .profile-info span { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+    .signout { border: 0; background: transparent; color: var(--muted); padding: 7px; font-size: 17px; }
+    .signout:hover { color: #c03951; }
+
+    .main { margin-left: 248px; min-height: 100vh; }
+
+    .topbar {
+      min-height: 74px;
+      background: rgba(255,255,255,.88);
+      border-bottom: 1px solid var(--line);
+      padding: 0 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .breadcrumb { color: var(--muted); font-size: 12px; }
+    .breadcrumb strong { color: var(--ink); font-weight: 700; }
+
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .status { color: var(--green); font-size: 12px; font-weight: 600; }
+    .status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #20a36e; }
+
+    .mobile-menu {
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+      padding: 8px 11px;
+    }
+
+    .content { max-width: 1500px; padding: 34px 36px 48px; margin: auto; }
+
+    .welcome {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      color: var(--purple);
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 1.3px;
+      margin-bottom: 10px;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      font: 800 clamp(25px, 3vw, 34px)/1.25 "Manrope", sans-serif;
+      letter-spacing: -1.2px;
+      margin-bottom: 9px;
+    }
+
+    .welcome p { color: var(--muted); margin: 0; line-height: 1.6; }
+
+    .button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 0 16px;
+      font-weight: 700;
+      transition: .18s ease;
+    }
+
+    .button-primary { background: var(--purple); color: white; }
+    .button-primary:hover { background: var(--purple-dark); transform: translateY(-1px); }
+    .button-secondary { background: white; border-color: var(--line); color: var(--ink); }
+    .button-secondary:hover { border-color: #cfc3ff; color: var(--purple); }
+    .button-small { min-height: 35px; padding: 0 12px; font-size: 12px; }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .section-heading h2 {
+      font: 800 16px "Manrope", sans-serif;
+      letter-spacing: -.3px;
+      margin: 0;
+    }
+
+    .section-heading span { color: var(--muted); font-size: 12px; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      min-width: 0;
+      box-shadow: 0 3px 12px rgba(38,24,71,.02);
+    }
+
+    .metric-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .metric-icon {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      background: var(--purple-light);
+      color: var(--purple);
+      border-radius: 11px;
+      font-size: 17px;
+    }
+
+    .metric-value {
+      font: 800 27px "Manrope", sans-serif;
+      letter-spacing: -1px;
+      margin: 17px 0 7px;
+    }
+
+    .metric-note { color: #9690a3; font-size: 11px; line-height: 1.5; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(270px, .9fr);
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 3px 12px rgba(38,24,71,.02);
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 22px 22px 18px;
+      border-bottom: 1px solid #f1eef6;
+    }
+
+    .panel-head h2 { font: 800 15px "Manrope", sans-serif; margin: 0 0 6px; }
+    .panel-head p { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
+
+    .progress-count {
+      background: var(--purple-light);
+      color: var(--purple);
+      border-radius: 8px;
+      padding: 7px 9px;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .setup-progress { padding: 0 22px; }
+    .progress-track { height: 5px; background: #f0edf6; border-radius: 99px; overflow: hidden; }
+    .progress-fill { width: 25%; height: 100%; background: var(--purple); border-radius: 99px; transition: width .2s ease; }
+
+    .steps { padding: 8px 22px 16px; }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 16px 0;
+      border-bottom: 1px solid #f3f0f7;
+    }
+
+    .step:last-child { border-bottom: 0; }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      background: #f5f3f9;
+      color: #8b849c;
+      font-weight: 800;
+    }
+
+    .step.current .step-number { background: var(--purple-light); color: var(--purple); }
+    .step.done .step-number { background: #e7f7ef; color: var(--green); }
+
+    .step-copy { flex: 1; min-width: 0; }
+    .step-copy strong { display: block; font-size: 13px; margin-bottom: 5px; }
+    .step-copy span { display: block; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .step-action { flex: 0 0 auto; }
+
+    .quick-actions { padding: 12px; display: grid; gap: 7px; }
+
+    .action {
+      display: flex;
+      align-items: center;
+      text-align: left;
+      gap: 12px;
+      padding: 13px 11px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      background: white;
+      color: var(--ink);
+      width: 100%;
+    }
+
+    .action:hover { background: #faf9ff; border-color: #eee8ff; }
+    .action-icon { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border-radius: 11px; background: #f5f2ff; color: var(--purple); font-size: 17px; }
+    .action-copy { flex: 1; }
+    .action-copy strong { display: block; font-size: 12px; margin-bottom: 4px; }
+    .action-copy span { color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .action-arrow { color: #a49db2; font-size: 17px; }
+
+    .activity-panel { margin-bottom: 20px; }
+
+    .empty-activity {
+      min-height: 170px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 25px;
+    }
+
+    .empty-icon {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      border-radius: 15px;
+      background: #f4f0ff;
+      color: var(--purple);
+      font-size: 22px;
+    }
+
+    .empty-activity strong { display: block; margin-bottom: 6px; font-size: 13px; }
+    .empty-activity p { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 0; }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #a19aac;
+      font-size: 11px;
+      padding-top: 6px;
+    }
+
+    .footer strong { color: #6d657c; }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 100;
+      max-width: min(380px, calc(100vw - 32px));
+      padding: 14px 17px;
+      border-radius: 12px;
+      background: #292239;
+      color: white;
+      box-shadow: 0 12px 40px rgba(20,10,40,.2);
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .auth-loading {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .loading-card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 32px;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #eee8ff;
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .auth-loading p { color: var(--muted); line-height: 1.6; }
+
+    .auth-error {
+      display: none;
+      margin-top: 14px;
+      color: #b4233d;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .auth-error a { color: var(--purple); font-weight: 700; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 1150px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .content { padding-left: 26px; padding-right: 26px; }
+      .topbar { padding-left: 26px; padding-right: 26px; }
+    }
+
+    @media (max-width: 850px) {
+      .sidebar { transform: translateX(-100%); transition: transform .22s ease; box-shadow: 10px 0 30px rgba(20,10,40,.06); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; }
+      .mobile-menu { display: inline-flex; }
+      .topbar { min-height: 66px; }
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .content { padding: 25px 16px 32px; }
+      .topbar { padding: 0 16px; }
+      .welcome { align-items: flex-start; flex-direction: column; margin-bottom: 23px; }
+      .welcome .button { width: 100%; }
+      .metrics { gap: 10px; }
+      .metric { padding: 15px; }
+      .metric-value { font-size: 23px; }
+      .metric-icon { width: 31px; height: 31px; }
+      .metric-label { font-size: 11px; }
+      .panel-head { padding: 18px 16px; }
+      .steps { padding: 6px 16px 12px; }
+      .setup-progress { padding: 0 16px; }
+      .step { gap: 10px; flex-wrap: wrap; }
+      .step-copy { min-width: 140px; }
+      .step-action { margin-left: 46px; }
+      .footer { flex-direction: column; }
+      .status { display: none; }
+    }
   </style>
 </head>
+
 <body>
-  <header>
-    <a href="/" class="brand">
-      <img src="/assets/logo/kivo-icon.png" alt="">
-      Kivo
-    </a>
-    <button id="sign-out" class="secondary" disabled>Sign out</button>
-  </header>
-
-  <main>
-    <div class="eyebrow">Seller workspace</div>
-    <h1 id="welcome">Preparing your dashboard...</h1>
-    <p id="account-email">Completing account authentication.</p>
-
-    <div id="status" class="show info" role="status" aria-live="polite">
-      Checking your sign-in session...
+  <div id="auth-loading" class="auth-loading">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <strong>Preparing your workspace</strong>
+      <p>Just a moment while we securely load your account.</p>
+      <div id="auth-error" class="auth-error"></div>
     </div>
+  </div>
 
-    <section id="content" class="hidden">
-      <h2>Your overview</h2>
-      <div class="grid">
-        <article class="card">
-          <div class="label">Products</div>
-          <div class="value">—</div>
-          <div class="small">Product management is not connected yet.</div>
-        </article>
-        <article class="card">
-          <div class="label">Orders</div>
-          <div class="value">—</div>
-          <div class="small">Order management is not connected yet.</div>
-        </article>
-        <article class="card">
-          <div class="label">Store</div>
-          <div class="value">Setup pending</div>
-          <div class="small">Store creation will be connected next.</div>
-        </article>
-      </div>
+  <div id="app" class="app hidden">
+    <aside id="sidebar" class="sidebar">
+      <a class="brand" href="/">
+        <img src="/assets/logo/kivo-icon.png" alt="Kivo">
+        <span class="brand-name">kivo</span>
+      </a>
 
-      <section class="setup">
-        <h2>Your Kivo workspace is ready for the next step</h2>
-        <p>Your account is authenticated. Store creation, products, inventory and orders still need to be connected.</p>
-        <div class="actions">
-          <a class="button primary" href="/">Visit homepage</a>
-          <button id="retry" class="secondary">Verify session again</button>
+      <p class="workspace-label">Workspace</p>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a class="nav-link active" href="/dashboard/" data-page="Overview">
+          <span class="nav-icon">⌂</span> Overview
+        </a>
+        <a class="nav-link" href="#store" data-page="My Store">
+          <span class="nav-icon">▣</span> My Store
+        </a>
+        <a class="nav-link" href="#products" data-page="Products">
+          <span class="nav-icon">◇</span> Products
+        </a>
+        <a class="nav-link" href="#orders" data-page="Orders">
+          <span class="nav-icon">▤</span> Orders
+        </a>
+        <a class="nav-link" href="#customers" data-page="Customers">
+          <span class="nav-icon">♧</span> Customers
+        </a>
+        <a class="nav-link" href="#inventory" data-page="Inventory">
+          <span class="nav-icon">▦</span> Inventory
+        </a>
+        <a class="nav-link" href="#marketing" data-page="Marketing">
+          <span class="nav-icon">↗</span> Marketing
+        </a>
+        <a class="nav-link" href="#analytics" data-page="Analytics">
+          <span class="nav-icon">▥</span> Analytics
+        </a>
+        <a class="nav-link" href="#settings" data-page="Settings">
+          <span class="nav-icon">⚙</span> Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="help-card">
+          <strong>Need a hand?</strong>
+          <p>Get your store ready and take the first step towards selling online.</p>
+          <a href="mailto:support@kivo.com">Contact support ↗</a>
         </div>
-      </section>
-    </section>
 
-    <footer>Kivo · Your business, better connected.</footer>
-  </main>
+        <div class="profile">
+          <div class="avatar" id="avatar">K</div>
+          <div class="profile-info">
+            <strong id="profile-name">Kivo Seller</strong>
+            <span id="profile-email">Loading account…</span>
+          </div>
+          <button id="signout" class="signout" type="button" aria-label="Sign out" title="Sign out">↪</button>
+        </div>
+      </div>
+    </aside>
 
+    <main class="main">
+      <header class="topbar">
+        <div style="display:flex;align-items:center;gap:13px">
+          <button id="mobile-menu" class="mobile-menu" type="button" aria-label="Open navigation">☰</button>
+          <div class="breadcrumb">Workspace <span style="padding:0 7px">/</span> <strong id="breadcrumb-page">Overview</strong></div>
+        </div>
+        <div class="topbar-right">
+          <span class="status"><span class="status-dot"></span>Workspace ready</span>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="welcome">
+          <div>
+            <div class="eyebrow">Seller workspace</div>
+            <h1 id="welcome-title">Welcome to Kivo</h1>
+            <p>Here's your business at a glance. Let's get your store ready to sell.</p>
+          </div>
+          <button class="button button-primary" type="button" data-action="create-store">
+            <span>＋</span> Set up your store
+          </button>
+        </section>
+
+        <section aria-labelledby="overview-title">
+          <div class="section-heading">
+            <h2 id="overview-title">Your overview</h2>
+            <span>All-time summary</span>
+          </div>
+
+          <div class="metrics">
+            <article class="metric">
+              <div class="metric-top">
+                <span class="metric-label">Total sales</span>
+                <span class="metric-icon">₦</span>
+              </div>
+              <div class="metric-value">₦0</div>
+              <div class="metric-note">Sales will appear here after you start selling.</div>
+            </article>
+
+            <article class="metric">
+              <div class="metric-top">
+                <span class="metric-label">Orders</span>
+                <span class="metric-icon">▤</span>
+              </div>
+              <div class="metric-value">0</div>
+              <div class="metric-note">Your customer orders in one place.</div>
+            </article>
+
+            <article class="metric">
+              <div class="metric-top">
+                <span class="metric-label">Products</span>
+                <span class="metric-icon">◇</span>
+              </div>
+              <div class="metric-value">0</div>
+              <div class="metric-note">Add products to start building your catalogue.</div>
+            </article>
+
+            <article class="metric">
+              <div class="metric-top">
+                <span class="metric-label">Customers</span>
+                <span class="metric-icon">♧</span>
+              </div>
+              <div class="metric-value">0</div>
+              <div class="metric-note">Your customer list will grow as orders arrive.</div>
+            </article>
+          </div>
+        </section>
+
+        <div class="main-grid">
+          <section class="panel" aria-labelledby="setup-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="setup-title">Get your store ready</h2>
+                <p>Complete these steps to prepare for your first sale.</p>
+              </div>
+              <span id="progress-count" class="progress-count">1 of 4</span>
+            </div>
+
+            <div class="setup-progress">
+              <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+            </div>
+
+            <div class="steps">
+              <div class="step current">
+                <div class="step-number">1</div>
+                <div class="step-copy">
+                  <strong>Create your store</strong>
+                  <span>Choose your store name and business details.</span>
+                </div>
+                <div class="step-action">
+                  <button class="button button-primary button-small" type="button" data-action="create-store">Start setup</button>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-copy">
+                  <strong>Add your first product</strong>
+                  <span>Show customers what you sell.</span>
+                </div>
+                <div class="step-action">
+                  <button class="button button-secondary button-small" type="button" data-action="products">Explore</button>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-copy">
+                  <strong>Set up delivery</strong>
+                  <span>Decide how customers will receive their orders.</span>
+                </div>
+                <div class="step-action">
+                  <button class="button button-secondary button-small" type="button" data-action="delivery">Explore</button>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-copy">
+                  <strong>Share your storefront</strong>
+                  <span>Get your store ready to share with customers.</span>
+                </div>
+                <div class="step-action">
+                  <button class="button button-secondary button-small" type="button" data-action="storefront">Explore</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="quick-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="quick-title">Quick actions</h2>
+                <p>Shortcuts for your day-to-day business.</p>
+              </div>
+            </div>
+
+            <div class="quick-actions">
+              <button class="action" type="button" data-action="create-store">
+                <span class="action-icon">＋</span>
+                <span class="action-copy">
+                  <strong>Create your store</strong>
+                  <span>Set up your business on Kivo</span>
+                </span>
+                <span class="action-arrow">›</span>
+              </button>
+
+              <button class="action" type="button" data-action="products">
+                <span class="action-icon">◇</span>
+                <span class="action-copy">
+                  <strong>Manage products</strong>
+                  <span>Build your product catalogue</span>
+                </span>
+                <span class="action-arrow">›</span>
+              </button>
+
+              <button class="action" type="button" data-action="orders">
+                <span class="action-icon">▤</span>
+                <span class="action-copy">
+                  <strong>View orders</strong>
+                  <span>Keep track of customer purchases</span>
+                </span>
+                <span class="action-arrow">›</span>
+              </button>
+
+              <button class="action" type="button" data-action="settings">
+                <span class="action-icon">⚙</span>
+                <span class="action-copy">
+                  <strong>Account settings</strong>
+                  <span>Manage your account preferences</span>
+                </span>
+                <span class="action-arrow">›</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel activity-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Recent activity</h2>
+              <p>Keep up with what's happening in your store.</p>
+            </div>
+            <span style="color:var(--muted);font-size:12px">Latest updates</span>
+          </div>
+
+          <div class="empty-activity">
+            <div>
+              <div class="empty-icon">✧</div>
+              <strong>Your business activity will appear here</strong>
+              <p>Once your store is set up and customers start interacting with it,<br class="desktop-break"> you'll see relevant updates here.</p>
+            </div>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <span><strong>Kivo</strong> · Your business, better connected.</span>
+          <span>Need help? <a href="mailto:support@kivo.com">Contact support</a></span>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    (() => {
-      "use strict";
+    const SUPABASE_URL = "https://uhgnuuuvjkzfipynnhzk.supabase.co";
+    const SUPABASE_PUBLIC_KEY = "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+    const STORAGE_KEY = "kivo-auth";
+    const LOGIN_URL = window.location.origin + "/auth/login.html";
 
-      const SUPABASE_URL = "https://uhgnuuuvjkzfipynnhzk.supabase.co";
-      const SUPABASE_PUBLIC_KEY = "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+    const loadingEl = document.getElementById("auth-loading");
+    const appEl = document.getElementById("app");
+    const errorEl = document.getElementById("auth-error");
+    const toastEl = document.getElementById("toast");
 
-      // MUST match auth/login.html exactly.
-      const STORAGE_KEY = "kivo-auth";
-      const LOGIN_URL = window.location.origin + "/auth/login.html";
+    let supabase;
+    let toastTimer;
 
-      const status = document.getElementById("status");
-      const welcome = document.getElementById("welcome");
-      const email = document.getElementById("account-email");
-      const content = document.getElementById("content");
-      const signOut = document.getElementById("sign-out");
-      const retry = document.getElementById("retry");
+    function showAuthError(message) {
+      errorEl.style.display = "block";
+      errorEl.innerHTML = "";
+      errorEl.append(document.createTextNode(message + " "));
+      const link = document.createElement("a");
+      link.href = LOGIN_URL;
+      link.textContent = "Return to sign in";
+      errorEl.append(link);
+    }
 
-      let checking = false;
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 4000);
+    }
 
-      const supabase = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_PUBLIC_KEY,
-        {
-          auth: {
-            flowType: "pkce",
-            storageKey: STORAGE_KEY,
-            storage: window.localStorage,
-            persistSession: true,
-            autoRefreshToken: true,
-            // We handle the callback exchange explicitly below.
-            detectSessionInUrl: false
-          }
+    async function startDashboard() {
+      try {
+        if (!window.supabase) {
+          throw new Error("The sign-in service could not load. Please refresh the page.");
         }
-      );
 
-      function showStatus(text, kind = "info") {
-        status.textContent = text;
-        status.className = "show " + kind;
-      }
+        supabase = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_PUBLIC_KEY,
+          {
+            auth: {
+              flowType: "pkce",
+              storageKey: STORAGE_KEY,
+              storage: window.localStorage,
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: false
+            }
+          }
+        );
 
-      async function verifyBackend(session) {
-        showStatus("Session received. Verifying your Kivo account...", "info");
+        // Complete Google's PKCE callback on the same origin and with the
+        // same storage key used by auth/login.html.
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
 
-        let response;
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
 
-        try {
-          response = await fetch("/api/me", {
-            method: "GET",
-            headers: {
-              Authorization: "Bearer " + session.access_token,
-              Accept: "application/json"
-            },
-            cache: "no-store"
-          });
-        } catch {
-          showStatus(
-            "Your Supabase session is active, but Kivo's backend could not be reached. Your session has been kept.",
-            "error"
-          );
+          // Remove the one-time OAuth code from the address bar.
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) throw error;
+
+        if (!data.session) {
+          window.location.replace(LOGIN_URL);
+          return;
+        }
+
+        // Verify the session with Kivo's server. This is intentionally
+        // a background check, not a success notification in the interface.
+        const response = await fetch("/api/me", {
+          method: "GET",
+          headers: {
+            "Authorization": "Bearer " + data.session.access_token
+          },
+          cache: "no-store"
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          await supabase.auth.signOut();
+          window.location.replace(LOGIN_URL);
           return;
         }
 
         if (!response.ok) {
-          const detail = (await response.text()).slice(0, 300);
-          showStatus(
-            "Your Supabase session exists, but Kivo backend verification failed (HTTP " +
-            response.status + "). " + detail,
-            "error"
-          );
-          return;
+          throw new Error("We couldn't verify your account with Kivo's server. Please refresh and try again.");
         }
 
-        welcome.textContent = "Welcome to Kivo";
-        email.textContent = session.user.email || "Signed-in account";
-        content.classList.remove("hidden");
-        signOut.disabled = false;
-        showStatus("Your session is active and the backend accepted your request.", "success");
+        const email = data.session.user.email || "Kivo Seller";
+        const name = email.split("@")[0];
+
+        document.getElementById("profile-email").textContent = email;
+        document.getElementById("profile-name").textContent = name;
+        document.getElementById("avatar").textContent = (name[0] || "K").toUpperCase();
+        document.getElementById("welcome-title").textContent = "Welcome back, " + name + ".";
+
+        loadingEl.classList.add("hidden");
+        appEl.classList.remove("hidden");
+      } catch (error) {
+        console.error("Kivo dashboard initialization failed:", error);
+        showAuthError(error.message || "Something went wrong while loading your workspace.");
       }
+    }
 
-      async function initialize() {
-        if (checking) return;
-        checking = true;
-        retry.disabled = true;
+    document.getElementById("signout").addEventListener("click", async () => {
+      const button = document.getElementById("signout");
+      button.disabled = true;
+      button.textContent = "…";
 
-        try {
-          const url = new URL(window.location.href);
-          const code = url.searchParams.get("code");
-          const callbackError =
-            url.searchParams.get("error_description") ||
-            url.searchParams.get("error");
-
-          if (callbackError) {
-            throw new Error("Google authentication failed: " + callbackError);
-          }
-
-          if (code) {
-            showStatus("Completing Google sign-in securely...", "info");
-
-            // Exchange the authorization code using the SAME localStorage
-            // and storage key used when login initiated the OAuth flow.
-            const { data, error } =
-              await supabase.auth.exchangeCodeForSession(code);
-
-            if (error) {
-              throw new Error(
-                "Google sign-in could not be completed: " + error.message
-              );
-            }
-
-            if (!data.session) {
-              throw new Error("Google returned no session. Please sign in again.");
-            }
-
-            // Remove the one-time authorization code from the URL.
-            window.history.replaceState(
-              {},
-              document.title,
-              url.pathname + url.hash
-            );
-
-            await verifyBackend(data.session);
-            return;
-          }
-
-          const { data, error } = await supabase.auth.getSession();
-
-          if (error) {
-            throw new Error("Could not read the saved session: " + error.message);
-          }
-
-          if (!data.session) {
-            welcome.textContent = "Sign in to Kivo";
-            email.textContent = "No active session was found.";
-            showStatus(
-              "No saved sign-in session was found. Use the sign-in button below to start a fresh login.",
-              "error"
-            );
-
-            if (!document.getElementById("login-link")) {
-              const link = document.createElement("a");
-              link.id = "login-link";
-              link.className = "button primary";
-              link.href = LOGIN_URL;
-              link.textContent = "Go to sign in";
-              retry.parentElement.appendChild(link);
-            }
-            return;
-          }
-
-          await verifyBackend(data.session);
-        } catch (error) {
-          welcome.textContent = "We couldn't finish signing you in";
-          showStatus(error.message || "An unexpected authentication error occurred.", "error");
-
-          if (!document.getElementById("login-link")) {
-            const link = document.createElement("a");
-            link.id = "login-link";
-            link.className = "button primary";
-            link.href = LOGIN_URL;
-            link.textContent = "Start a new sign-in";
-            retry.parentElement.appendChild(link);
-          }
-        } finally {
-          checking = false;
-          retry.disabled = false;
-        }
-      }
-
-      signOut.addEventListener("click", async () => {
-        signOut.disabled = true;
+      try {
         const { error } = await supabase.auth.signOut();
-
-        if (error) {
-          showStatus("Sign-out failed: " + error.message, "error");
-          signOut.disabled = false;
-          return;
-        }
-
+        if (error) throw error;
         window.location.replace(LOGIN_URL);
+      } catch (error) {
+        console.error("Sign-out failed:", error);
+        showToast("Couldn't sign you out. Please try again.");
+        button.disabled = false;
+        button.textContent = "↪";
+      }
+    });
+
+    document.getElementById("mobile-menu").addEventListener("click", () => {
+      document.getElementById("sidebar").classList.toggle("open");
+    });
+
+    document.querySelectorAll(".nav-link").forEach(link => {
+      link.addEventListener("click", event => {
+        const page = link.dataset.page;
+
+        if (page === "Overview") return;
+
+        event.preventDefault();
+        document.getElementById("sidebar").classList.remove("open");
+        showToast(page + " isn't connected yet. We'll connect this section to your store data next.");
       });
+    });
 
-      retry.addEventListener("click", initialize);
+    document.querySelectorAll("[data-action]").forEach(button => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.action;
 
-      initialize();
-    })();
+        const messages = {
+          "create-store": "Store creation is the next feature to connect. This button doesn't create a store yet.",
+          "products": "Product management isn't connected yet. Your product catalogue will appear here once it's built.",
+          "orders": "Order management isn't connected yet. Your customer orders will appear here once it's built.",
+          "delivery": "Delivery settings aren't connected yet.",
+          "storefront": "Your public storefront will be available after store creation is connected.",
+          "settings": "Account settings are not connected yet."
+        };
+
+        showToast(messages[action] || "This feature is coming in a future Kivo update.");
+      });
+    });
+
+    startDashboard();
   </script>
 </body>
 </html>
