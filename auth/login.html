@@ -280,8 +280,8 @@
     }
 
     function getClient() {
-      if (SUPABASE_URL.includes("PASTE_YOUR_") ||
-          SUPABASE_PUBLIC_KEY.includes("PASTE_YOUR_")) {
+      if (SUPABASE_URL.includes("https://uhgnuuuvjkzfipynnhzk.supabase.co") ||
+          SUPABASE_PUBLIC_KEY.includes("sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy")) {
         throw new Error(
           "Please add your Supabase Project URL and public key first."
         );
@@ -356,6 +356,7 @@
 
         $("session-status").textContent =
           "Backend verification successful.";
+          window.location.replace("/dashboard/");
       } catch {
         $("session-status").textContent =
           "Signed in, but the backend could not be reached.";
@@ -420,7 +421,7 @@
           provider: "google",
           options: {
             redirectTo:
-              window.location.origin + "/auth/login.html"
+              window.location.origin + "/dashboard/"
           }
         });
 
