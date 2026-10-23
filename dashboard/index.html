@@ -446,6 +446,184 @@
 
       const STORAGE_KEY = "kivo-auth";
       const LOGIN_URL = location.origin + "/auth/login.html";
+            const PENDING_SUBSCRIPTION_KEY = "kivo-pending-subscription";
+
+      const VALID_PLAN_CODES = [
+        "beginner",
+        "growth",
+        "pro",
+        "platinum"
+      ];
+
+      function clearPendingSubscription() {
+        localStorage.removeItem(PENDING_SUBSCRIPTION_KEY);
+      }
+
+      function cleanDashboardUrl() {
+        history.replaceState({}, "", location.pathname);
+      }
+
+      function getPendingSubscription() {
+        const params = new URLSearchParams(location.search);
+        const plan = params.get("plan");
+        const interval = params.get("interval");
+
+        if (
+          VALID_PLAN_CODES.includes(plan) &&
+          ["monthly", "annual"].includes(interval)
+        ) {
+          return { plan, interval };
+        }
+
+        try {
+          const pending = JSON.parse(
+            localStorage.getItem(PENDING_SUBSCRIPTION_KEY) || "null"
+          );
+
+          if (
+            pending &&
+            VALID_PLAN_CODES.includes(pending.plan) &&
+            ["monthly", "annual"].includes(pending.interval)
+          ) {
+            return pending;
+          }
+        } catch {
+          clearPendingSubscription();
+        }
+
+        return null;
+      }
+
+      async function handleBillingFlow(session) {
+        const params = new URLSearchParams(location.search);
+
+        // CASE 1: The seller has returned from Paystack.
+        if (params.get("billing") === "return") {
+          const reference =
+            params.get("reference") || params.get("trxref");
+
+          clearPendingSubscription();
+          cleanDashboardUrl();
+
+          if (!reference) {
+            return {
+              message:
+                "We couldn't find your payment reference. Check your payment status before trying again."
+            };
+          }
+
+          try {
+            const response = await fetch("/api/billing-status", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + session.access_token,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify({ reference }),
+              cache: "no-store"
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success && result.paid) {
+              return {
+                message:
+                  "Payment verified! Your " +
+                  (result.plan_code || "Kivo") +
+                  " subscription is active."
+              };
+            }
+
+            if (response.ok && result.success && !result.paid) {
+              return {
+                message:
+                  "Payment has not been confirmed. Your subscription has not been activated."
+              };
+            }
+
+            return {
+              message:
+                result.error ||
+                "We couldn't verify your payment. Please try again."
+            };
+          } catch (error) {
+            console.error("Billing return verification failed:", error);
+
+            return {
+              message:
+                "We couldn't contact the payment service. Please try again."
+            };
+          }
+        }
+
+        // CASE 2: The seller selected a plan before signing in.
+        const pending = getPendingSubscription();
+
+        if (!pending) {
+          return null;
+        }
+
+        try {
+          const response = await fetch("/api/billing-verify", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + session.access_token,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: JSON.stringify({
+              plan_code: pending.plan,
+              billing_interval: pending.interval
+            }),
+            cache: "no-store"
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                result.error ||
+                "We couldn't start checkout. Please try again."
+            };
+          }
+
+          if (
+            typeof result.authorization_url !== "string" ||
+            !result.authorization_url.startsWith("https://")
+          ) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                "The payment service returned an invalid checkout address."
+            };
+          }
+
+          // Prevent stale plan selections from starting checkout again.
+          clearPendingSubscription();
+
+          // Replace the dashboard history entry with the Paystack page.
+          location.replace(result.authorization_url);
+
+          return { redirecting: true };
+        } catch (error) {
+          console.error("Checkout initialization failed:", error);
+
+          clearPendingSubscription();
+          cleanDashboardUrl();
+
+          return {
+            message:
+              "We couldn't connect to the payment service. Please try again."
+          };
+        }
+        }
 
       const loading = document.getElementById("auth-loading");
       const loadingTitle = document.getElementById("loading-title");
@@ -550,16 +728,26 @@
           return;
         }
 
-        if (!response.ok) {
+                if (!response.ok) {
           throw new Error(
             "Kivo's server could not verify your account. Please refresh and try again."
           );
+        }
+
+        const billingResult = await handleBillingFlow(data.session);
+
+        if (billingResult?.redirecting) {
+          return;
         }
 
         displayUser(data.session.user);
 
         loading.classList.add("hidden");
         app.classList.remove("hidden");
+
+        if (billingResult?.message) {
+          showToast(billingResult.message);
+        }
 
         client.auth.onAuthStateChange((event) => {
           if (event === "SIGNED_OUT") {
