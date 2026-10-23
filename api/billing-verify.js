@@ -1,13 +1,30 @@
-
 const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 
+const appUrl = "https://kivo-bay.vercel.app";
+
+const VALID_PLANS = [
+  "beginner",
+  "growth",
+  "pro",
+  "platinum"
+];
+
+const VALID_INTERVALS = [
+  "monthly",
+  "annual"
+];
+
 module.exports = async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
+
     return res.status(405).json({
       success: false,
       error: "Method not allowed."
@@ -27,16 +44,38 @@ module.exports = async function handler(req, res) {
   if (!tokenMatch) {
     return res.status(401).json({
       success: false,
-      error: "Please sign in before verifying payment."
+      error: "Please sign in before starting checkout."
     });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
+  const planCode = req.body?.plan_code;
+  const billingInterval = req.body?.billing_interval;
+
+  if (
+    typeof planCode !== "string" ||
+    !VALID_PLANS.includes(planCode) ||
+    typeof billingInterval !== "string" ||
+    !VALID_INTERVALS.includes(billingInterval)
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: "Please select a valid plan and billing interval."
+    });
+  }
+
+  const supabase = createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     }
-  });
+  );
+
+  let paymentId = null;
+  let subscriptionId = null;
 
   try {
     const {
@@ -51,196 +90,180 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const reference = req.body?.reference;
-
-    if (
-      typeof reference !== "string" ||
-      !/^kivo_[a-f0-9-]{36}$/i.test(reference)
-    ) {
+    if (!user.email) {
       return res.status(400).json({
         success: false,
-        error: "A valid payment reference is required."
+        error: "Your account needs a valid email address for checkout."
       });
     }
 
-    const { data: payment, error: paymentError } = await supabase
-      .from("billing_payments")
+    const { data: plan, error: planError } = await supabase
+      .from("plans")
       .select(
-        "id, subscription_id, user_id, provider, provider_reference, amount_ngn, currency, status"
+        "code, name, monthly_price_ngn, annual_price_ngn, is_active"
       )
-      .eq("provider_reference", reference)
-      .eq("user_id", user.id)
-      .eq("provider", "paystack")
+      .eq("code", planCode)
+      .eq("is_active", true)
       .maybeSingle();
 
-    if (paymentError) {
-      console.error("Payment lookup failed:", paymentError);
+    if (planError) {
+      console.error("Plan lookup failed:", planError);
+
       return res.status(500).json({
         success: false,
-        error: "Could not look up this payment."
+        error: "Could not retrieve the selected plan."
       });
     }
 
-    if (!payment) {
-      return res.status(404).json({
+    if (!plan) {
+      return res.status(400).json({
         success: false,
-        error: "Payment reference not found."
+        error: "This plan is unavailable."
       });
     }
+
+    const amountNgn =
+      billingInterval === "annual"
+        ? plan.annual_price_ngn
+        : plan.monthly_price_ngn;
+
+    const amountKobo = amountNgn * 100;
+
+    if (
+      !Number.isSafeInteger(amountNgn) ||
+      amountNgn <= 0 ||
+      !Number.isSafeInteger(amountKobo)
+    ) {
+      console.error("Invalid plan price:", plan.code);
+
+      return res.status(500).json({
+        success: false,
+        error: "The selected plan has an invalid price."
+      });
+    }
+
+    const reference = `kivo_${crypto.randomUUID()}`;
 
     const { data: subscription, error: subscriptionError } =
       await supabase
         .from("subscriptions")
-        .select("id, user_id, plan_code, billing_interval, status")
-        .eq("id", payment.subscription_id)
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .insert({
+          user_id: user.id,
+          plan_code: plan.code,
+          billing_interval: billingInterval,
+          status: "incomplete",
+          provider: "paystack"
+        })
+        .select("id")
+        .single();
 
     if (subscriptionError || !subscription) {
-      console.error("Subscription lookup failed:", subscriptionError);
-      return res.status(500).json({
-        success: false,
-        error: "Could not verify the subscription."
-      });
-    }
-
-    if (payment.status === "successful") {
-      return res.status(200).json({
-        success: true,
-        verified: true,
-        message: "This payment has already been verified."
-      });
-    }
-
-    if (payment.status !== "pending") {
-      return res.status(409).json({
-        success: false,
-        error: "This payment is no longer pending."
-      });
-    }
-
-    if (subscription.status !== "incomplete") {
-      return res.status(409).json({
-        success: false,
-        error: "This subscription cannot be activated by this payment."
-      });
-    }
-
-    const response = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${paystackSecretKey}`,
-          Accept: "application/json"
-        }
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok || result.status !== true || !result.data) {
-      return res.status(502).json({
-        success: false,
-        error: "Paystack could not verify this payment. Please try again."
-      });
-    }
-
-    const transaction = result.data;
-
-    if (
-      transaction.reference !== payment.provider_reference ||
-      transaction.status !== "success" ||
-      transaction.currency !== payment.currency ||
-      transaction.amount !== payment.amount_ngn * 100 ||
-      transaction.metadata?.user_id !== user.id ||
-      transaction.metadata?.subscription_id !== subscription.id ||
-      transaction.metadata?.plan_code !== subscription.plan_code ||
-      transaction.metadata?.billing_interval !== subscription.billing_interval
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: "Payment details do not match this subscription."
-      });
-    }
-
-    const paidAt = transaction.paid_at || new Date().toISOString();
-    const periodStart = new Date(paidAt);
-    const periodEnd = new Date(periodStart);
-
-    if (subscription.billing_interval === "annual") {
-      periodEnd.setUTCFullYear(periodEnd.getUTCFullYear() + 1);
-    } else if (subscription.billing_interval === "monthly") {
-      periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1);
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid subscription billing interval."
-      });
-    }
-
-    const { data: updatedPayment, error: updatePaymentError } =
-      await supabase
-        .from("billing_payments")
-        .update({
-          status: "successful",
-          paid_at: paidAt
-        })
-        .eq("id", payment.id)
-        .eq("user_id", user.id)
-        .eq("status", "pending")
-        .select("id")
-        .maybeSingle();
-
-    if (updatePaymentError || !updatedPayment) {
-      console.error("Payment update failed:", updatePaymentError);
-      return res.status(409).json({
-        success: false,
-        error: "Payment status changed or could not be updated. Please retry."
-      });
-    }
-
-    const { data: updatedSubscription, error: updateSubscriptionError } =
-      await supabase
-        .from("subscriptions")
-        .update({
-          status: "active",
-          provider: "paystack",
-          current_period_start: periodStart.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", subscription.id)
-        .eq("user_id", user.id)
-        .eq("status", "incomplete")
-        .select("id")
-        .maybeSingle();
-
-    if (updateSubscriptionError || !updatedSubscription) {
       console.error(
-        "Subscription activation failed:",
-        updateSubscriptionError
+        "Subscription creation failed:",
+        subscriptionError
       );
 
       return res.status(500).json({
         success: false,
-        verified: true,
-        error:
-          "Payment was confirmed, but subscription activation needs recovery. Please contact support."
+        error: "Could not create your subscription checkout."
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      verified: true,
-      message: "Payment verified and subscription activated."
-    });
-  } catch (error) {
-    console.error("Payment verification error:", error);
+    subscriptionId = subscription.id;
 
-    return res.status(500).json({
-      success: false,
-      error: "Something went wrong while verifying payment."
-    });
-  }
-};
+    const { data: payment, error: paymentError } = await supabase
+      .from("billing_payments")
+      .insert({
+        subscription_id: subscriptionId,
+        user_id: user.id,
+        provider: "paystack",
+        provider_reference: reference,
+        amount_ngn: amountNgn,
+        currency: "NGN",
+        status: "pending"
+      })
+      .select("id")
+      .single();
+
+    if (paymentError || !payment) {
+      console.error(
+        "Pending payment creation failed:",
+        paymentError
+      );
+
+      // Remove the incomplete subscription if no payment record
+      // could be created for it.
+      const { error: cleanupError } = await supabase
+        .from("subscriptions")
+        .delete()
+        .eq("id", subscriptionId)
+        .eq("user_id", user.id)
+        .eq("status", "incomplete");
+
+      if (cleanupError) {
+        console.error(
+          "Incomplete subscription cleanup failed:",
+          cleanupError
+        );
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: "Could not create your payment record. Please try again."
+      });
+    }
+
+    paymentId = payment.id;
+
+    const paystackResponse = await fetch(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({
+          email: user.email,
+          amount: amountKobo,
+          currency: "NGN",
+          reference,
+          callback_url: `${appUrl}/dashboard/?billing=return`,
+          metadata: {
+            user_id: user.id,
+            subscription_id: subscriptionId,
+            plan_code: plan.code,
+            billing_interval: billingInterval
+          }
+        })
+      }
+    );
+
+    let paystackResult;
+
+    try {
+      paystackResult = await paystackResponse.json();
+    } catch {
+      paystackResult = null;
+    }
+
+    if (
+      !paystackResponse.ok ||
+      paystackResult?.status !== true ||
+      typeof paystackResult?.data?.authorization_url !== "string" ||
+      !paystackResult.data.authorization_url.startsWith("https://")
+    ) {
+      console.error(
+        "Paystack checkout initialization failed:",
+        paystackResponse.status,
+        paystackResult?.message || "Invalid Paystack response"
+      );
+
+      const { error: paymentUpdateError } = await supabase
+        .from("billing_payments")
+        .update({
+          status: "failed"
+        })
+        .eq("id", paymentId)
+        .eq
