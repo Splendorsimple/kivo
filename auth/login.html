@@ -166,6 +166,56 @@
       const STORAGE_KEY = "kivo-auth";
       const LOGIN_URL = location.origin + "/auth/login.html";
       const DASHBOARD_URL = location.origin + "/dashboard/";
+      const PENDING_SUBSCRIPTION_KEY = "kivo-pending-subscription";
+
+const VALID_PLAN_CODES = [
+  "beginner",
+  "growth",
+  "pro",
+  "platinum"
+];
+
+function capturePendingSubscription() {
+  const params = new URLSearchParams(location.search);
+  const plan = params.get("plan");
+  const interval = params.get("interval");
+
+  if (
+    VALID_PLAN_CODES.includes(plan) &&
+    ["monthly", "annual"].includes(interval)
+  ) {
+    localStorage.setItem(
+      PENDING_SUBSCRIPTION_KEY,
+      JSON.stringify({ plan, interval })
+    );
+  }
+}
+
+function getDashboardRedirectUrl() {
+  const dashboardUrl = new URL(DASHBOARD_URL);
+  let pending;
+
+  try {
+    pending = JSON.parse(
+      localStorage.getItem(PENDING_SUBSCRIPTION_KEY) || "null"
+    );
+  } catch {
+    pending = null;
+  }
+
+  if (
+    pending &&
+    VALID_PLAN_CODES.includes(pending.plan) &&
+    ["monthly", "annual"].includes(pending.interval)
+  ) {
+    dashboardUrl.searchParams.set("plan", pending.plan);
+    dashboardUrl.searchParams.set("interval", pending.interval);
+  }
+
+  return dashboardUrl.toString();
+}
+
+capturePendingSubscription();
 
       const message = document.getElementById("message");
       const form = document.getElementById("auth-form");
@@ -256,7 +306,7 @@
             );
           }
 
-          location.replace(DASHBOARD_URL);
+          location.replace(getDashboardRedirectUrl());
         } catch (error) {
           notify(error.message || "Account verification failed.");
         }
@@ -328,9 +378,11 @@
 
         try {
           const { error } = await client.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: DASHBOARD_URL }
-          });
+  provider: "google",
+  options: {
+    redirectTo: getDashboardRedirectUrl()
+  }
+});
 
           if (error) throw error;
         } catch (error) {
