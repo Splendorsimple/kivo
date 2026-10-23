@@ -266,4 +266,35 @@ module.exports = async function handler(req, res) {
           status: "failed"
         })
         .eq("id", paymentId)
-        .eq
+        .eq("status", "pending");
+
+      if (paymentUpdateError) {
+        console.error(
+          "Failed payment update failed:",
+          paymentUpdateError
+        );
+      }
+
+      return res.status(502).json({
+        success: false,
+        error: "Paystack could not start checkout. Please try again."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      authorization_url: paystackResult.data.authorization_url,
+      reference
+    });
+  } catch (error) {
+    console.error("Checkout initialization error:", error);
+
+    // If Paystack initialization may have been attempted, do not
+    // mark the payment failed here: the request may have reached
+    // Paystack even if the connection subsequently failed.
+    return res.status(500).json({
+      success: false,
+      error: "Could not start checkout. Please try again."
+    });
+  }
+};
