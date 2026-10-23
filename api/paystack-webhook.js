@@ -1,4 +1,3 @@
-
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 
@@ -9,6 +8,7 @@ const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
+
     return res.status(405).json({
       success: false,
       error: "Method not allowed."
@@ -22,16 +22,6 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // Paystack signs the exact raw request body.
-  const rawBody = req.body;
-
-  if (!Buffer.isBuffer(rawBody)) {
-    return res.status(400).json({
-      success: false,
-      error: "Raw request body is required."
-    });
-  }
-
   const signature = req.headers["x-paystack-signature"];
 
   if (typeof signature !== "string") {
@@ -41,17 +31,36 @@ module.exports = async function handler(req, res) {
     });
   }
 
+  let rawBody;
+
+  try {
+    const chunks = [];
+
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+
+    rawBody = Buffer.concat(chunks);
+  } catch (error) {
+    console.error("Webhook body reading failed:", error);
+
+    return res.status(400).json({
+      success: false,
+      error: "Could not read webhook request body."
+    });
+  }
+
   const expectedSignature = crypto
     .createHmac("sha512", paystackSecretKey)
     .update(rawBody)
     .digest("hex");
 
-  const received = Buffer.from(signature, "utf8");
-  const expected = Buffer.from(expectedSignature, "utf8");
+  const receivedBuffer = Buffer.from(signature, "utf8");
+  const expectedBuffer = Buffer.from(expectedSignature, "utf8");
 
   if (
-    received.length !== expected.length ||
-    !crypto.timingSafeEqual(received, expected)
+    receivedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(receivedBuffer, expectedBuffer)
   ) {
     return res.status(401).json({
       success: false,
@@ -70,9 +79,11 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // We only process successful charge notifications.
+  // Other Paystack events require no action here.
   if (event.event !== "charge.success") {
-    return res.status(200).json({ received: true });
+    return res.status(200).json({
+      received: true
+    });
   }
 
   const transaction = event.data;
@@ -82,15 +93,21 @@ module.exports = async function handler(req, res) {
     transaction.status !== "success" ||
     typeof transaction.reference !== "string"
   ) {
-    return res.status(200).json({ received: true });
+    return res.status(200).json({
+      received: true
+    });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
+  const supabase = createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     }
-  });
+  );
 
   try {
     const { data: payment, error: paymentError } = await supabase
@@ -104,39 +121,57 @@ module.exports = async function handler(req, res) {
 
     if (paymentError) {
       console.error("Webhook payment lookup failed:", paymentError);
-      return res.status(500).json({ received: false });
+
+      return res.status(500).json({
+        received: false
+      });
     }
 
-    // Ignore unknown references. Do not create records from webhook data.
+    // Never create a payment record from untrusted webhook data.
     if (!payment) {
-      return res.status(200).json({ received: true });
+      console.warn("Ignoring unknown Paystack reference.");
+
+      return res.status(200).json({
+        received: true
+      });
     }
 
+    // Already completed payments are safe to acknowledge.
     if (payment.status === "successful") {
-      return res.status(200).json({ received: true });
+      return res.status(200).json({
+        received: true
+      });
     }
 
     if (payment.status !== "pending") {
-      return res.status(200).json({ received: true });
+      return res.status(200).json({
+        received: true
+      });
     }
+
+    const expectedAmountKobo = payment.amount_ngn * 100;
 
     if (
       transaction.reference !== payment.provider_reference ||
       transaction.currency !== payment.currency ||
-      transaction.amount !== payment.amount_ngn * 100 ||
+      transaction.amount !== expectedAmountKobo ||
       transaction.metadata?.user_id !== payment.user_id ||
       transaction.metadata?.subscription_id !== payment.subscription_id
     ) {
-      console.error("Webhook transaction did not match payment record.");
-      return res.status(200).json({ received: true });
+      console.error("Webhook transaction did not match the payment record.");
+
+      return res.status(200).json({
+        received: true
+      });
     }
 
-    // Independently verify the transaction with Paystack before granting access.
+    // Independently verify the transaction with Paystack.
     const verifyResponse = await fetch(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(
         payment.provider_reference
       )}`,
       {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${paystackSecretKey}`,
           Accept: "application/json"
@@ -144,41 +179,80 @@ module.exports = async function handler(req, res) {
       }
     );
 
+    if (!verifyResponse.ok) {
+      console.error(
+        "Paystack verification request failed:",
+        verifyResponse.status
+      );
+
+      return res.status(502).json({
+        received: false
+      });
+    }
+
     const verification = await verifyResponse.json();
+    const verified = verification.data;
 
     if (
-      !verifyResponse.ok ||
       verification.status !== true ||
-      verification.data?.status !== "success" ||
-      verification.data?.reference !== payment.provider_reference ||
-      verification.data?.amount !== payment.amount_ngn * 100 ||
-      verification.data?.currency !== payment.currency ||
-      verification.data?.metadata?.user_id !== payment.user_id ||
-      verification.data?.metadata?.subscription_id !== payment.subscription_id
+      !verified ||
+      verified.status !== "success" ||
+      verified.reference !== payment.provider_reference ||
+      verified.amount !== expectedAmountKobo ||
+      verified.currency !== payment.currency ||
+      verified.metadata?.user_id !== payment.user_id ||
+      verified.metadata?.subscription_id !== payment.subscription_id
     ) {
-      console.error("Paystack API verification did not match webhook.");
-      return res.status(200).json({ received: true });
+      console.error("Paystack verification did not match the payment record.");
+
+      return res.status(200).json({
+        received: true
+      });
     }
 
-    // Record payment only. Subscription activation will be handled by a
-    // single database transaction in the next hardening step.
-    const { error: updateError } = await supabase
-      .from("billing_payments")
-      .update({
-        status: "successful",
-        paid_at: verification.data.paid_at || new Date().toISOString()
-      })
-      .eq("id", payment.id)
-      .eq("status", "pending");
+    // Atomically record the successful payment and activate its subscription.
+    const { data: activationResult, error: activationError } =
+      await supabase.rpc("activate_verified_paystack_payment", {
+        p_provider_reference: payment.provider_reference,
+        p_verified_amount_kobo: verified.amount,
+        p_verified_currency: verified.currency,
+        p_paid_at: verified.paid_at || null
+      });
 
-    if (updateError) {
-      console.error("Webhook payment update failed:", updateError);
-      return res.status(500).json({ received: false });
+    if (activationError) {
+      console.error(
+        "Payment activation failed:",
+        activationError
+      );
+
+      return res.status(500).json({
+        received: false
+      });
     }
 
-    return res.status(200).json({ received: true });
+    if (!activationResult || activationResult.success !== true) {
+      console.error("Unexpected payment activation result.");
+
+      return res.status(500).json({
+        received: false
+      });
+    }
+
+    return res.status(200).json({
+      received: true
+    });
   } catch (error) {
     console.error("Paystack webhook processing failed:", error);
-    return res.status(500).json({ received: false });
+
+    return res.status(500).json({
+      received: false
+    });
+  }
+};
+
+// Vercel must not parse the body before signature verification.
+module.exports.config = {
+  api: {
+    bodyParser: false
   }
 };
