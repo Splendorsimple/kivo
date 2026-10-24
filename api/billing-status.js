@@ -58,7 +58,7 @@ module.exports = async function handler(req, res) {
   );
 
   try {
-    // Authenticate the actual signed-in user.
+    // Authenticate the signed-in user.
     const {
       data: { user },
       error: authError
@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Only retrieve a payment belonging to this user.
+    // Retrieve only a payment belonging to this user.
     const { data: payment, error: paymentError } = await supabase
       .from("billing_payments")
       .select(
@@ -104,6 +104,37 @@ module.exports = async function handler(req, res) {
         paid: false,
         status: payment.status,
         error: "This payment is not eligible for activation."
+      });
+    }
+
+    // Confirm the subscription belongs to this user and retrieve
+    // its authoritative plan and billing interval.
+    const { data: subscription, error: subscriptionError } =
+      await supabase
+        .from("subscriptions")
+        .select(
+          "id, user_id, plan_code, billing_interval, status"
+        )
+        .eq("id", payment.subscription_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (subscriptionError) {
+      console.error(
+        "Billing subscription lookup failed:",
+        subscriptionError
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: "Could not retrieve your subscription details."
+      });
+    }
+
+    if (!subscription) {
+      return res.status(409).json({
+        success: false,
+        error: "The subscription linked to this payment was not found."
       });
     }
 
@@ -161,17 +192,20 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Match Paystack's verified transaction to our own records.
+    // Match Paystack's verified transaction to our payment record
+    // and the actual subscription stored in Supabase.
     if (
       verified.reference !== payment.provider_reference ||
       verified.amount !== expectedAmountKobo ||
       verified.currency !== payment.currency ||
       payment.currency !== "NGN" ||
       verified.metadata?.user_id !== payment.user_id ||
-      verified.metadata?.subscription_id !== payment.subscription_id
+      verified.metadata?.subscription_id !== payment.subscription_id ||
+      verified.metadata?.plan_code !== subscription.plan_code ||
+      verified.metadata?.billing_interval !== subscription.billing_interval
     ) {
       console.error(
-        "Verified transaction did not match the billing record."
+        "Verified transaction did not match the payment or subscription record."
       );
 
       return res.status(409).json({
@@ -180,8 +214,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // The database function records the payment and activates
-    // the subscription within one database transaction.
+    // Atomically record the verified payment and activate the subscription.
     const { data: activationResult, error: activationError } =
       await supabase.rpc("activate_verified_paystack_payment", {
         p_provider_reference: payment.provider_reference,
@@ -201,7 +234,10 @@ module.exports = async function handler(req, res) {
     }
 
     if (!activationResult || activationResult.success !== true) {
-      console.error("Unexpected activation result.");
+      console.error(
+        "Unexpected activation result:",
+        activationResult
+      );
 
       return res.status(500).json({
         success: false,
@@ -215,8 +251,10 @@ module.exports = async function handler(req, res) {
       status: "successful",
       already_activated: activationResult.already_activated === true,
       subscription_id: activationResult.subscription_id,
-      plan_code: activationResult.plan_code || null,
-      billing_interval: activationResult.billing_interval || null,
+      plan_code:
+        activationResult.plan_code || subscription.plan_code,
+      billing_interval:
+        activationResult.billing_interval || subscription.billing_interval,
       message: "Your payment has been verified successfully."
     });
   } catch (error) {
