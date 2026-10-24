@@ -16,6 +16,8 @@ module.exports = async function handler(req, res) {
   }
 
   if (!supabaseUrl || !serviceRoleKey || !paystackSecretKey) {
+    console.error("Paystack webhook configuration is incomplete.");
+
     return res.status(500).json({
       success: false,
       error: "Webhook configuration is incomplete."
@@ -37,7 +39,9 @@ module.exports = async function handler(req, res) {
     const chunks = [];
 
     for await (const chunk of req) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      chunks.push(
+        Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      );
     }
 
     rawBody = Buffer.concat(chunks);
@@ -79,7 +83,7 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // Other Paystack events require no action here.
+  // Acknowledge unrelated Paystack events without processing them.
   if (event.event !== "charge.success") {
     return res.status(200).json({
       received: true
@@ -127,7 +131,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Never create a payment record from untrusted webhook data.
+    // Never create payment records from webhook data.
     if (!payment) {
       console.warn("Ignoring unknown Paystack reference.");
 
@@ -136,11 +140,12 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Already completed payments are safe to acknowledge.
-  
-    }
-
-    if (payment.status !== "pending") {
+    // Allow retries for pending or successful payments.
+    // The database function performs the authoritative state checks.
+    if (
+      payment.status !== "pending" &&
+      payment.status !== "successful"
+    ) {
       return res.status(200).json({
         received: true
       });
@@ -155,7 +160,9 @@ module.exports = async function handler(req, res) {
       transaction.metadata?.user_id !== payment.user_id ||
       transaction.metadata?.subscription_id !== payment.subscription_id
     ) {
-      console.error("Webhook transaction did not match the payment record.");
+      console.error(
+        "Webhook transaction did not match the payment record."
+      );
 
       return res.status(200).json({
         received: true
@@ -200,14 +207,17 @@ module.exports = async function handler(req, res) {
       verified.metadata?.user_id !== payment.user_id ||
       verified.metadata?.subscription_id !== payment.subscription_id
     ) {
-      console.error("Paystack verification did not match the payment record.");
+      console.error(
+        "Paystack verification did not match the payment record."
+      );
 
       return res.status(200).json({
         received: true
       });
     }
 
-    // Atomically record the successful payment and activate its subscription.
+    // Atomically record the verified payment and activate the subscription.
+    // This also allows the database function to handle safe retries.
     const { data: activationResult, error: activationError } =
       await supabase.rpc("activate_verified_paystack_payment", {
         p_provider_reference: payment.provider_reference,
@@ -227,8 +237,14 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (!activationResult || activationResult.success !== true) {
-      console.error("Unexpected payment activation result.");
+    if (
+      !activationResult ||
+      activationResult.success !== true
+    ) {
+      console.error(
+        "Unexpected payment activation result:",
+        activationResult
+      );
 
       return res.status(500).json({
         received: false
