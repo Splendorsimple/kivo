@@ -137,10 +137,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Already completed payments are safe to acknowledge.
-    if (payment.status === "successful") {
-      return res.status(200).json({
-        received: true
-      });
+  
     }
 
     if (payment.status !== "pending") {
