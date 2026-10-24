@@ -1,20 +1,12 @@
-
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f7fc">
   <meta name="description" content="Manage your Kivo seller workspace.">
-  <title>Overview | Kivo</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <title>Overview | Kivo</title>  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <style>
     :root {
       --purple: #6d28d9;
       --purple-light: #f1eaff;
@@ -305,10 +297,7 @@
       .topbar h1 { font-size: 18px; }
       .profile-email { max-width: 150px; }
     }
-  </style>
-</head>
-
-<body>
+  </style></head><body>
   <div id="auth-loading" class="loading-screen">
     <div class="loading-card">
       <div class="spinner" id="spinner"></div>
@@ -316,125 +305,118 @@
       <p id="loading-message">Securely checking your account. Please wait.</p>
       <div id="auth-error" class="hidden" role="alert"></div>
     </div>
-  </div>
-
-  <div id="app" class="layout hidden">
+  </div>  <div id="app" class="layout hidden">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="/">
         <span class="brand-mark">K</span>
         <span>Kivo</span>
-      </a>
+      </a>  <div class="nav-label">Workspace</div>
 
-      <div class="nav-label">Workspace</div>
+  <nav class="nav" aria-label="Main navigation">
+    <a href="/dashboard/" class="active">
+      <span class="nav-icon">⌂</span> Overview
+    </a>
+    <a href="#" data-action="products">
+      <span class="nav-icon">▦</span> Products
+    </a>
+    <a href="#" data-action="orders">
+      <span class="nav-icon">▤</span> Orders
+    </a>
+    <a href="#" data-action="customers">
+      <span class="nav-icon">♙</span> Customers
+    </a>
+    <a href="#" data-action="store">
+      <span class="nav-icon">◇</span> My store
+    </a>
+    <a href="#" data-action="settings">
+      <span class="nav-icon">⚙</span> Settings
+    </a>
+  </nav>
 
-      <nav class="nav" aria-label="Main navigation">
-        <a href="/dashboard/" class="active">
-          <span class="nav-icon">⌂</span> Overview
-        </a>
-        <a href="#" data-action="products">
-          <span class="nav-icon">▦</span> Products
-        </a>
-        <a href="#" data-action="orders">
-          <span class="nav-icon">▤</span> Orders
-        </a>
-        <a href="#" data-action="customers">
-          <span class="nav-icon">♙</span> Customers
-        </a>
-        <a href="#" data-action="store">
-          <span class="nav-icon">◇</span> My store
-        </a>
-        <a href="#" data-action="settings">
-          <span class="nav-icon">⚙</span> Settings
-        </a>
-      </nav>
-
-      <div class="sidebar-bottom">
-        <div class="help-card">
-          <strong>Need a hand?</strong>
-          <p>Get help setting up your Kivo workspace.</p>
-          <a href="mailto:support@kivo.com">Contact support →</a>
-        </div>
-        <button class="signout" id="signout" type="button">
-          Sign out
-        </button>
-      </div>
-    </aside>
-
-    <main class="main">
-      <header class="topbar">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="menu-button" id="mobile-menu" type="button"
-            aria-label="Toggle navigation">☰</button>
-          <h1>Overview</h1>
-        </div>
-
-        <div class="profile">
-          <div class="avatar" id="avatar">K</div>
-          <div>
-            <div class="profile-name" id="profile-name">Kivo Seller</div>
-            <div class="profile-email" id="profile-email"></div>
-          </div>
-        </div>
-      </header>
-
-      <section class="content">
-        <div class="welcome">
-          <h2 id="welcome-title">Welcome to Kivo</h2>
-          <p>Your business workspace is ready. Use the navigation to access your seller tools.</p>
-        </div>
-
-        <h2 class="section-title">Your workspace</h2>
-
-        <div class="grid">
-          <article class="panel">
-            <div class="panel-icon">▦</div>
-            <h3>Products</h3>
-            <p>Manage your product catalogue and inventory.</p>
-            <button type="button" data-action="products">Open products</button>
-          </article>
-
-          <article class="panel">
-            <div class="panel-icon">▤</div>
-            <h3>Orders</h3>
-            <p>Review and manage your customer orders.</p>
-            <button type="button" data-action="orders">Open orders</button>
-          </article>
-
-          <article class="panel">
-            <div class="panel-icon">♙</div>
-            <h3>Customers</h3>
-            <p>Keep track of customers and their details.</p>
-            <button type="button" data-action="customers">Open customers</button>
-          </article>
-
-          <article class="panel">
-            <div class="panel-icon">◇</div>
-            <h3>Storefront</h3>
-            <p>Access your store setup and storefront settings.</p>
-            <button type="button" data-action="store">Manage store</button>
-          </article>
-
-          <article class="panel">
-            <div class="panel-icon">⚙</div>
-            <h3>Settings</h3>
-            <p>Manage your workspace preferences.</p>
-            <button type="button" data-action="settings">Open settings</button>
-          </article>
-
-          <article class="panel">
-            <div class="panel-icon">?</div>
-            <h3>Help and support</h3>
-            <p>Contact support if you need help with Kivo.</p>
-            <button type="button" data-action="support">Get help</button>
-          </article>
-        </div>
-      </section>
-    </main>
+  <div class="sidebar-bottom">
+    <div class="help-card">
+      <strong>Need a hand?</strong>
+      <p>Get help setting up your Kivo workspace.</p>
+      <a href="mailto:support@kivo.com">Contact support →</a>
+    </div>
+    <button class="signout" id="signout" type="button">
+      Sign out
+    </button>
   </div>
+</aside>
 
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<main class="main">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="menu-button" id="mobile-menu" type="button"
+        aria-label="Toggle navigation">☰</button>
+      <h1>Overview</h1>
+    </div>
 
-  <script>
+    <div class="profile">
+      <div class="avatar" id="avatar">K</div>
+      <div>
+        <div class="profile-name" id="profile-name">Kivo Seller</div>
+        <div class="profile-email" id="profile-email"></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="content">
+    <div class="welcome">
+      <h2 id="welcome-title">Welcome to Kivo</h2>
+      <p>Your business workspace is ready. Use the navigation to access your seller tools.</p>
+    </div>
+
+    <h2 class="section-title">Your workspace</h2>
+
+    <div class="grid">
+      <article class="panel">
+        <div class="panel-icon">▦</div>
+        <h3>Products</h3>
+        <p>Manage your product catalogue and inventory.</p>
+        <button type="button" data-action="products">Open products</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">▤</div>
+        <h3>Orders</h3>
+        <p>Review and manage your customer orders.</p>
+        <button type="button" data-action="orders">Open orders</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">♙</div>
+        <h3>Customers</h3>
+        <p>Keep track of customers and their details.</p>
+        <button type="button" data-action="customers">Open customers</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">◇</div>
+        <h3>Storefront</h3>
+        <p>Access your store setup and storefront settings.</p>
+        <button type="button" data-action="store">Manage store</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">⚙</div>
+        <h3>Settings</h3>
+        <p>Manage your workspace preferences.</p>
+        <button type="button" data-action="settings">Open settings</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">?</div>
+        <h3>Help and support</h3>
+        <p>Contact support if you need help with Kivo.</p>
+        <button type="button" data-action="support">Get help</button>
+      </article>
+    </div>
+  </section>
+</main>
+
+  </div>  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  <script>
     (async function initialiseKivoDashboard() {
       "use strict";
 
@@ -446,7 +428,7 @@
 
       const STORAGE_KEY = "kivo-auth";
       const LOGIN_URL = location.origin + "/auth/login.html";
-            const PENDING_SUBSCRIPTION_KEY = "kivo-pending-subscription";
+      const PENDING_SUBSCRIPTION_KEY = "kivo-pending-subscription";
 
       const VALID_PLAN_CODES = [
         "beginner",
@@ -502,10 +484,11 @@
           const reference =
             params.get("reference") || params.get("trxref");
 
-          clearPendingSubscription();
-          cleanDashboardUrl();
-
+          // Without a reference, there is nothing to retry.
           if (!reference) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
             return {
               message:
                 "We couldn't find your payment reference. Check your payment status before trying again."
@@ -526,7 +509,11 @@
 
             const result = await response.json();
 
+            // Only clear the reference after the server confirms payment.
             if (response.ok && result.success && result.paid) {
+              clearPendingSubscription();
+              cleanDashboardUrl();
+
               return {
                 message:
                   "Payment verified! Your " +
@@ -535,24 +522,26 @@
               };
             }
 
+            // Keep the reference in the URL so refreshing retries verification.
             if (response.ok && result.success && !result.paid) {
               return {
                 message:
-                  "Payment has not been confirmed. Your subscription has not been activated."
+                  "Payment has not been confirmed yet. Your subscription has not been activated. Refresh this page later to check again."
               };
             }
 
             return {
               message:
                 result.error ||
-                "We couldn't verify your payment. Please try again."
+                "We couldn't verify your payment. Refresh this page to try again."
             };
           } catch (error) {
             console.error("Billing return verification failed:", error);
 
+            // Do not remove the reference on a network or server failure.
             return {
               message:
-                "We couldn't contact the payment service. Please try again."
+                "We couldn't contact the payment service. Check your connection and refresh this page to try again."
             };
           }
         }
@@ -623,7 +612,7 @@
               "We couldn't connect to the payment service. Please try again."
           };
         }
-        }
+      }
 
       const loading = document.getElementById("auth-loading");
       const loadingTitle = document.getElementById("loading-title");
@@ -680,8 +669,10 @@
       }
 
       async function start() {
-        if (!window.supabase ||
-            typeof window.supabase.createClient !== "function") {
+        if (
+          !window.supabase ||
+          typeof window.supabase.createClient !== "function"
+        ) {
           throw new Error(
             "The authentication library failed to load. Refresh the page."
           );
@@ -702,118 +693,4 @@
           }
         );
 
-        // Supabase JS handles the OAuth callback. Do not manually exchange
-        // the same code with exchangeCodeForSession() as well.
-        const { data, error } = await client.auth.getSession();
-
-        if (error) throw error;
-
-        if (!data.session) {
-          location.replace(LOGIN_URL);
-          return;
-        }
-
-        const response = await fetch("/api/me", {
-          method: "GET",
-          headers: {
-            Authorization: "Bearer " + data.session.access_token,
-            Accept: "application/json"
-          },
-          cache: "no-store"
-        });
-
-        if (response.status === 401 || response.status === 403) {
-          await client.auth.signOut();
-          location.replace(LOGIN_URL);
-          return;
-        }
-
-                if (!response.ok) {
-          throw new Error(
-            "Kivo's server could not verify your account. Please refresh and try again."
-          );
-        }
-
-        const billingResult = await handleBillingFlow(data.session);
-
-        if (billingResult?.redirecting) {
-          return;
-        }
-
-        displayUser(data.session.user);
-
-        loading.classList.add("hidden");
-        app.classList.remove("hidden");
-
-        if (billingResult?.message) {
-          showToast(billingResult.message);
-        }
-
-        client.auth.onAuthStateChange((event) => {
-          if (event === "SIGNED_OUT") {
-            location.replace(LOGIN_URL);
-          }
-        });
-
-        document.getElementById("signout").addEventListener("click", async () => {
-          const button = document.getElementById("signout");
-          button.disabled = true;
-          button.textContent = "Signing out...";
-
-          try {
-            const { error } = await client.auth.signOut();
-            if (error) throw error;
-            location.replace(LOGIN_URL);
-          } catch (error) {
-            button.disabled = false;
-            button.textContent = "Sign out";
-            showToast(error.message || "Could not sign out. Please try again.");
-          }
-        });
-
-        document.getElementById("mobile-menu").addEventListener("click", () => {
-          document.getElementById("sidebar").classList.toggle("open");
-        });
-
-        document.querySelectorAll("[data-action]").forEach(element => {
-          element.addEventListener("click", event => {
-            event.preventDefault();
-
-            const action = element.dataset.action;
-            const labels = {
-              products: "Product management",
-              orders: "Order management",
-              customers: "Customer management",
-              store: "Storefront management",
-              settings: "Workspace settings",
-              support: "Support"
-            };
-
-            if (action === "support") {
-              location.href = "mailto:support@kivo.com";
-              return;
-            }
-
-            showToast(
-              (labels[action] || "This feature") +
-              " is not connected yet."
-            );
-
-            document.getElementById("sidebar").classList.remove("open");
-          });
-        });
-      }
-
-      try {
-        await start();
-      } catch (error) {
-        console.error("Kivo dashboard initialization failed:", error);
-        showError(
-          error.message ||
-          "An unexpected error occurred while opening your workspace."
-        );
-      }
-    })();
-  </script>
-</body>
-</html>
+        // Supabase JS handles the OAu
