@@ -19,8 +19,7 @@ module.exports = async function handler(req, res) {
     console.error("Paystack webhook configuration is incomplete.");
 
     return res.status(500).json({
-      success: false,
-      error: "Webhook configuration is incomplete."
+      received: false
     });
   }
 
@@ -28,7 +27,7 @@ module.exports = async function handler(req, res) {
 
   if (typeof signature !== "string") {
     return res.status(401).json({
-      success: false,
+      received: false,
       error: "Missing webhook signature."
     });
   }
@@ -49,8 +48,7 @@ module.exports = async function handler(req, res) {
     console.error("Webhook body reading failed:", error);
 
     return res.status(400).json({
-      success: false,
-      error: "Could not read webhook request body."
+      received: false
     });
   }
 
@@ -67,7 +65,7 @@ module.exports = async function handler(req, res) {
     !crypto.timingSafeEqual(receivedBuffer, expectedBuffer)
   ) {
     return res.status(401).json({
-      success: false,
+      received: false,
       error: "Invalid webhook signature."
     });
   }
@@ -78,12 +76,12 @@ module.exports = async function handler(req, res) {
     event = JSON.parse(rawBody.toString("utf8"));
   } catch {
     return res.status(400).json({
-      success: false,
+      received: false,
       error: "Invalid JSON payload."
     });
   }
 
-  // Acknowledge unrelated Paystack events without processing them.
+  // Other Paystack events do not require processing here.
   if (event.event !== "charge.success") {
     return res.status(200).json({
       received: true
@@ -114,6 +112,7 @@ module.exports = async function handler(req, res) {
   );
 
   try {
+    // Only process payment records created by Kivo.
     const { data: payment, error: paymentError } = await supabase
       .from("billing_payments")
       .select(
@@ -131,7 +130,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Never create payment records from webhook data.
+    // Never create a payment record from webhook data.
     if (!payment) {
       console.warn("Ignoring unknown Paystack reference.");
 
@@ -140,8 +139,8 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Allow retries for pending or successful payments.
-    // The database function performs the authoritative state checks.
+    // Retry pending payments and successful payments whose
+    // subscription activation may need reconciliation.
     if (
       payment.status !== "pending" &&
       payment.status !== "successful"
@@ -154,14 +153,59 @@ module.exports = async function handler(req, res) {
     const expectedAmountKobo = payment.amount_ngn * 100;
 
     if (
+      !Number.isSafeInteger(expectedAmountKobo) ||
+      expectedAmountKobo <= 0
+    ) {
+      console.error("Recorded payment amount is invalid.");
+
+      return res.status(200).json({
+        received: true
+      });
+    }
+
+    // Retrieve the authoritative subscription details from Supabase.
+    const { data: subscription, error: subscriptionError } =
+      await supabase
+        .from("subscriptions")
+        .select("id, user_id, plan_code, billing_interval, status")
+        .eq("id", payment.subscription_id)
+        .eq("user_id", payment.user_id)
+        .maybeSingle();
+
+    if (subscriptionError) {
+      console.error(
+        "Webhook subscription lookup failed:",
+        subscriptionError
+      );
+
+      return res.status(500).json({
+        received: false
+      });
+    }
+
+    if (!subscription) {
+      console.error(
+        "No matching subscription exists for the payment."
+      );
+
+      return res.status(200).json({
+        received: true
+      });
+    }
+
+    // Match the signed webhook event to our stored payment and subscription.
+    if (
       transaction.reference !== payment.provider_reference ||
       transaction.currency !== payment.currency ||
       transaction.amount !== expectedAmountKobo ||
+      payment.currency !== "NGN" ||
       transaction.metadata?.user_id !== payment.user_id ||
-      transaction.metadata?.subscription_id !== payment.subscription_id
+      transaction.metadata?.subscription_id !== payment.subscription_id ||
+      transaction.metadata?.plan_code !== subscription.plan_code ||
+      transaction.metadata?.billing_interval !== subscription.billing_interval
     ) {
       console.error(
-        "Webhook transaction did not match the payment record."
+        "Webhook event did not match the stored payment and subscription."
       );
 
       return res.status(200).json({
@@ -171,9 +215,8 @@ module.exports = async function handler(req, res) {
 
     // Independently verify the transaction with Paystack.
     const verifyResponse = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(
-        payment.provider_reference
-      )}`,
+      "https://api.paystack.co/transaction/verify/" +
+        encodeURIComponent(payment.provider_reference),
       {
         method: "GET",
         headers: {
@@ -200,15 +243,28 @@ module.exports = async function handler(req, res) {
     if (
       verification.status !== true ||
       !verified ||
-      verified.status !== "success" ||
+      verified.status !== "success"
+    ) {
+      console.error("Paystack has not confirmed a successful transaction.");
+
+      return res.status(200).json({
+        received: true
+      });
+    }
+
+    // Independently match Paystack's verified record to Kivo's records.
+    if (
       verified.reference !== payment.provider_reference ||
       verified.amount !== expectedAmountKobo ||
       verified.currency !== payment.currency ||
+      verified.currency !== "NGN" ||
       verified.metadata?.user_id !== payment.user_id ||
-      verified.metadata?.subscription_id !== payment.subscription_id
+      verified.metadata?.subscription_id !== payment.subscription_id ||
+      verified.metadata?.plan_code !== subscription.plan_code ||
+      verified.metadata?.billing_interval !== subscription.billing_interval
     ) {
       console.error(
-        "Paystack verification did not match the payment record."
+        "Verified Paystack transaction did not match the stored subscription."
       );
 
       return res.status(200).json({
@@ -217,7 +273,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Atomically record the verified payment and activate the subscription.
-    // This also allows the database function to handle safe retries.
+    // The database function is responsible for final state checks and retries.
     const { data: activationResult, error: activationError } =
       await supabase.rpc("activate_verified_paystack_payment", {
         p_provider_reference: payment.provider_reference,
