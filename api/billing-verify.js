@@ -127,6 +127,44 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Retire this user's abandoned checkouts (older than 24 hours) so
+    // incomplete subscriptions do not pile up. Rows are marked, not
+    // deleted, so a late payment can still be traced and refunded.
+    // This is best-effort and must never block a new checkout.
+    try {
+      const staleBefore = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
+
+      const { data: staleSubscriptions } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "incomplete")
+        .lt("created_at", staleBefore);
+
+      if (staleSubscriptions && staleSubscriptions.length > 0) {
+        const staleIds = staleSubscriptions.map((row) => row.id);
+
+        await supabase
+          .from("billing_payments")
+          .update({ status: "failed" })
+          .in("subscription_id", staleIds)
+          .eq("status", "pending");
+
+        await supabase
+          .from("subscriptions")
+          .update({
+            status: "expired",
+            updated_at: new Date().toISOString()
+          })
+          .in("id", staleIds)
+          .eq("status", "incomplete");
+      }
+    } catch (staleError) {
+      console.error("Stale checkout cleanup failed:", staleError);
+    }
+
     const { data: plan, error: planError } = await supabase
       .from("plans")
       .select(
@@ -305,6 +343,20 @@ module.exports = async function handler(req, res) {
         );
       }
 
+      const { error: expireError } = await supabase
+        .from("subscriptions")
+        .update({
+          status: "expired",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", subscriptionId)
+        .eq("user_id", user.id)
+        .eq("status", "incomplete");
+
+      if (expireError) {
+        console.error("Failed subscription update failed:", expireError);
+      }
+
       return res.status(502).json({
         success: false,
         error: "Paystack could not start checkout. Please try again."
@@ -328,4 +380,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
-            
+        
