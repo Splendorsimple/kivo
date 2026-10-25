@@ -754,8 +754,31 @@
 
         if (billing && billing.message) showToast(billing.message);
 
-        document.getElementById("mobile-menu").addEventListener("click", () => {
-          document.getElementById("sidebar").classList.toggle("open");
+                const sidebar = document.getElementById("sidebar");
+        const menuButton = document.getElementById("mobile-menu");
+
+        function closeSidebar() {
+          sidebar.classList.remove("open");
+        }
+
+        menuButton.addEventListener("click", () => {
+          sidebar.classList.toggle("open");
+        });
+
+        // Tap anywhere outside the menu to close it
+        document.addEventListener("click", (event) => {
+          if (!sidebar.classList.contains("open")) return;
+          if (sidebar.contains(event.target) || menuButton.contains(event.target)) return;
+          closeSidebar();
+        });
+
+        // Close on Escape and after choosing an item
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") closeSidebar();
+        });
+
+        sidebar.querySelectorAll("a, button").forEach((el) => {
+          el.addEventListener("click", closeSidebar);
         });
 
         document.getElementById("signout").addEventListener("click", async () => {
