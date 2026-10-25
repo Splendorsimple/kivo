@@ -81,8 +81,73 @@ module.exports = async function handler(req, res) {
     });
   }
 
+  const supabase = createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
+  // Best-effort audit log of every signed webhook. It never blocks or
+  // fails the webhook. Only non-personal fields are stored.
+  let eventLogId = null;
+
+  try {
+    const { data: logged, error: logError } = await supabase
+      .from("subscription_events")
+      .insert({
+        provider: "paystack",
+        provider_event_id:
+          event.data && event.data.id != null ? String(event.data.id) : null,
+        event_type: String(event.event || "unknown"),
+        processing_status: "received",
+        payload: {
+          event: event.event || null,
+          reference: (event.data && event.data.reference) || null,
+          status: (event.data && event.data.status) || null,
+          amount: event.data && event.data.amount != null
+            ? event.data.amount
+            : null,
+          currency: (event.data && event.data.currency) || null
+        }
+      })
+      .select("id")
+      .single();
+
+    if (logError) {
+      console.error("Webhook event log failed:", logError.message);
+    } else {
+      eventLogId = logged ? logged.id : null;
+    }
+  } catch (logException) {
+    console.error("Webhook event log failed:", logException.message);
+  }
+
+  async function markEvent(status, errorMessage) {
+    if (!eventLogId) return;
+
+    try {
+      await supabase
+        .from("subscription_events")
+        .update({
+          processing_status: status,
+          error_message: errorMessage || null,
+          processed_at: new Date().toISOString()
+        })
+        .eq("id", eventLogId);
+    } catch (markException) {
+      console.error("Webhook event update failed:", markException.message);
+    }
+  }
+
   // Other Paystack events do not require processing here.
   if (event.event !== "charge.success") {
+    await markEvent("processed", "Ignored event type.");
+
     return res.status(200).json({
       received: true
     });
@@ -99,17 +164,6 @@ module.exports = async function handler(req, res) {
       received: true
     });
   }
-
-  const supabase = createClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
 
   try {
     // Only process payment records created by Kivo.
@@ -288,6 +342,8 @@ module.exports = async function handler(req, res) {
         activationError
       );
 
+      await markEvent("failed", "Payment activation failed.");
+
       return res.status(500).json({
         received: false
       });
@@ -302,16 +358,22 @@ module.exports = async function handler(req, res) {
         activationResult
       );
 
+      await markEvent("failed", "Unexpected activation result.");
+
       return res.status(500).json({
         received: false
       });
     }
+
+    await markEvent("processed", null);
 
     return res.status(200).json({
       received: true
     });
   } catch (error) {
     console.error("Paystack webhook processing failed:", error);
+
+    await markEvent("failed", "Unhandled processing error.");
 
     return res.status(500).json({
       received: false
