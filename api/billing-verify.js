@@ -97,6 +97,36 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // The database allows only one current subscription per user, so
+    // never take a payment from someone who already has one.
+    const { data: currentSubscription, error: currentError } =
+      await supabase
+        .from("subscriptions")
+        .select("id, plan_code, status")
+        .eq("user_id", user.id)
+        .in("status", ["active", "trialing", "past_due"])
+        .limit(1)
+        .maybeSingle();
+
+    if (currentError) {
+      console.error("Current subscription lookup failed:", currentError);
+
+      return res.status(500).json({
+        success: false,
+        error: "Could not check your current subscription."
+      });
+    }
+
+    if (currentSubscription) {
+      return res.status(409).json({
+        success: false,
+        error:
+          "You already have an active " +
+          currentSubscription.plan_code +
+          " subscription. Plan changes are not available yet."
+      });
+    }
+
     const { data: plan, error: planError } = await supabase
       .from("plans")
       .select(
@@ -298,3 +328,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+            
