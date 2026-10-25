@@ -693,4 +693,113 @@
           }
         );
 
-        // Supabase JS handles the OAu
+        // Supabase JS handles the OAuth callback via detectSessionInUrl: true.
+      const { data: sessionData, error: sessionError } =
+        await client.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(
+          "We couldn't restore your session. Please refresh the page and try again."
+        );
+      }
+
+      const session = sessionData?.session;
+
+      if (!session) {
+        window.location.replace("/auth/login.html");
+        return;
+      }
+
+      // Verify the signed-in user with the Kivo server.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      let response;
+
+      try {
+        response = await fetch("/api/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: "application/json"
+          },
+          cache: "no-store",
+          signal: controller.signal
+        });
+      } catch (error) {
+        if (error.name === "AbortError") {
+          throw new Error(
+            "Kivo is taking too long to verify your account. Please refresh and try again."
+          );
+        }
+
+        throw new Error(
+          "We couldn't connect to Kivo. Check your internet connection and try again."
+        );
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        await client.auth.signOut();
+        window.location.replace("/auth/login.html");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          "Kivo couldn't verify your account. Please try again shortly."
+        );
+      }
+
+      const userData = await response.json();
+
+      // Continue with the existing subscription/billing flow.
+      await handleBillingFlow(session);
+
+      // Display the dashboard only after verification succeeds.
+      if (typeof showDashboard === "function") {
+        showDashboard(userData);
+      } else {
+        const loading = document.getElementById("loadingScreen");
+
+        if (loading) {
+          loading.style.display = "none";
+        }
+
+        const dashboard = document.getElementById("dashboardContent");
+
+        if (dashboard) {
+          dashboard.style.display = "block";
+        }
+      }
+
+    } catch (error) {
+      console.error("Kivo dashboard startup failed:", error);
+
+      const loading = document.getElementById("loadingScreen");
+
+      if (loading) {
+        loading.innerHTML = `
+          <div style="max-width:420px;margin:0 auto;padding:24px;text-align:center;">
+            <h2>Unable to load your workspace</h2>
+            <p>${String(error.message || "Something went wrong.")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")}</p>
+            <button onclick="window.location.reload()"
+              style="padding:12px 20px;border:0;border-radius:8px;cursor:pointer;">
+              Try again
+            </button>
+          </div>
+        `;
+      }
+    }
+  }
+
+  // Start the dashboard.
+  start();
+})();
+</script>
+</body>
+</html>
