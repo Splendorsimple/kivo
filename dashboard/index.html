@@ -1,0 +1,787 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7fc">
+  <meta name="description" content="Manage your Kivo seller workspace.">
+  <title>Overview | Kivo</title>  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <style>
+    :root {
+      --purple: #6d28d9;
+      --purple-light: #f1eaff;
+      --ink: #201b2d;
+      --muted: #817b90;
+      --line: #ece9f2;
+      --page: #f8f7fc;
+      --white: #fff;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 14px "DM Sans", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+
+    .loading-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .loading-card {
+      width: 100%;
+      max-width: 390px;
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: white;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      margin: 0 auto 18px;
+      border: 3px solid var(--purple-light);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-card p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    #auth-error {
+      margin-top: 14px;
+      color: #b4233d;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .layout { min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 245px;
+      padding: 26px 16px 18px;
+      background: white;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      transition: transform .2s ease;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      margin-bottom: 38px;
+      color: var(--purple);
+      font: 800 25px "Manrope", sans-serif;
+      letter-spacing: -1px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      background: var(--purple);
+      color: white;
+      border-radius: 11px;
+      font-size: 20px;
+    }
+
+    .nav-label {
+      padding: 0 12px;
+      margin-bottom: 12px;
+      color: #a09aaf;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav { display: grid; gap: 5px; }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      color: #6f687e;
+      font-weight: 600;
+    }
+
+    .nav a:hover, .nav a.active {
+      background: var(--purple-light);
+      color: var(--purple);
+    }
+
+    .nav-icon { width: 20px; text-align: center; font-size: 17px; }
+    .sidebar-bottom { margin-top: auto; }
+
+    .help-card {
+      padding: 15px;
+      margin-bottom: 18px;
+      border: 1px solid #eee8ff;
+      border-radius: 13px;
+      background: #f8f6ff;
+    }
+
+    .help-card strong { display: block; margin-bottom: 7px; }
+    .help-card p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .help-card a { color: var(--purple); font-size: 12px; font-weight: 700; }
+
+    .signout {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+      color: #b4233d;
+      font-weight: 700;
+    }
+
+    .main { margin-left: 245px; min-width: 0; }
+
+    .topbar {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 32px;
+      background: white;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font: 700 20px "Manrope", sans-serif;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-weight: 800;
+    }
+
+    .profile-name { font-weight: 700; }
+    .profile-email { margin-top: 3px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+
+    .content { max-width: 1150px; margin: auto; padding: 32px; }
+
+    .welcome {
+      padding: 28px;
+      border-radius: var(--radius);
+      background: linear-gradient(120deg, #6d28d9, #8b5cf6);
+      color: white;
+    }
+
+    .welcome h2 {
+      margin: 0 0 10px;
+      font: 800 26px "Manrope", sans-serif;
+    }
+
+    .welcome p { max-width: 600px; margin: 0; color: #f1eaff; line-height: 1.7; }
+
+    .section-title { margin: 30px 0 15px; font: 700 17px "Manrope", sans-serif; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 22px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+
+    .panel-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 18px;
+      border-radius: 12px;
+      background: var(--purple-light);
+      font-size: 20px;
+    }
+
+    .panel h3 { margin: 0 0 8px; font: 700 16px "Manrope", sans-serif; }
+    .panel p { min-height: 44px; margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
+
+    .panel button {
+      width: 100%;
+      padding: 11px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-weight: 700;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 30;
+      max-width: calc(100vw - 44px);
+      padding: 14px 18px;
+      border-radius: 12px;
+      background: #201b2d;
+      color: white;
+      box-shadow: 0 8px 30px #201b2d25;
+    }
+
+    .menu-button {
+      display: none;
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); box-shadow: 10px 0 30px #201b2d15; }
+      .main { margin-left: 0; }
+      .menu-button { display: block; }
+      .topbar { padding: 14px 20px; }
+      .content { padding: 20px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      .welcome { padding: 22px; }
+      .welcome h2 { font-size: 22px; }
+      .topbar h1 { font-size: 18px; }
+      .profile-email { max-width: 150px; }
+    }
+  </style></head><body>
+  <div id="auth-loading" class="loading-screen">
+    <div class="loading-card">
+      <div class="spinner" id="spinner"></div>
+      <strong id="loading-title">Preparing your workspace</strong>
+      <p id="loading-message">Securely checking your account. Please wait.</p>
+      <div id="auth-error" class="hidden" role="alert"></div>
+    </div>
+  </div>  <div id="app" class="layout hidden">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/">
+        <span class="brand-mark">K</span>
+        <span>Kivo</span>
+      </a>  <div class="nav-label">Workspace</div>
+
+  <nav class="nav" aria-label="Main navigation">
+    <a href="/dashboard/" class="active">
+      <span class="nav-icon">⌂</span> Overview
+    </a>
+    <a href="#" data-action="products">
+      <span class="nav-icon">▦</span> Products
+    </a>
+    <a href="#" data-action="orders">
+      <span class="nav-icon">▤</span> Orders
+    </a>
+    <a href="#" data-action="customers">
+      <span class="nav-icon">♙</span> Customers
+    </a>
+    <a href="#" data-action="store">
+      <span class="nav-icon">◇</span> My store
+    </a>
+    <a href="#" data-action="settings">
+      <span class="nav-icon">⚙</span> Settings
+    </a>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <div class="help-card">
+      <strong>Need a hand?</strong>
+      <p>Get help setting up your Kivo workspace.</p>
+      <a href="mailto:support@kivo.com">Contact support →</a>
+    </div>
+    <button class="signout" id="signout" type="button">
+      Sign out
+    </button>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="menu-button" id="mobile-menu" type="button"
+        aria-label="Toggle navigation">☰</button>
+      <h1>Overview</h1>
+    </div>
+
+    <div class="profile">
+      <div class="avatar" id="avatar">K</div>
+      <div>
+        <div class="profile-name" id="profile-name">Kivo Seller</div>
+        <div class="profile-email" id="profile-email"></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="content">
+    <div class="welcome">
+      <h2 id="welcome-title">Welcome to Kivo</h2>
+      <p>Your business workspace is ready. Use the navigation to access your seller tools.</p>
+    </div>
+
+    <h2 class="section-title">Your workspace</h2>
+
+    <div class="grid">
+      <article class="panel">
+        <div class="panel-icon">▦</div>
+        <h3>Products</h3>
+        <p>Manage your product catalogue and inventory.</p>
+        <button type="button" data-action="products">Open products</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">▤</div>
+        <h3>Orders</h3>
+        <p>Review and manage your customer orders.</p>
+        <button type="button" data-action="orders">Open orders</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">♙</div>
+        <h3>Customers</h3>
+        <p>Keep track of customers and their details.</p>
+        <button type="button" data-action="customers">Open customers</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">◇</div>
+        <h3>Storefront</h3>
+        <p>Access your store setup and storefront settings.</p>
+        <button type="button" data-action="store">Manage store</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">⚙</div>
+        <h3>Settings</h3>
+        <p>Manage your workspace preferences.</p>
+        <button type="button" data-action="settings">Open settings</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">?</div>
+        <h3>Help and support</h3>
+        <p>Contact support if you need help with Kivo.</p>
+        <button type="button" data-action="support">Get help</button>
+      </article>
+    </div>
+  </section>
+</main>
+
+  </div>  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  <script>
+    (async function initialiseKivoDashboard() {
+      "use strict";
+
+      const SUPABASE_URL =
+        "https://uhgnuuuvjkzfipynnhzk.supabase.co";
+
+      const SUPABASE_PUBLIC_KEY =
+        "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+
+      const STORAGE_KEY = "kivo-auth";
+      const LOGIN_URL = location.origin + "/auth/login.html";
+      const PENDING_SUBSCRIPTION_KEY = "kivo-pending-subscription";
+
+      const VALID_PLAN_CODES = [
+        "beginner",
+        "growth",
+        "pro",
+        "platinum"
+      ];
+
+      function clearPendingSubscription() {
+        localStorage.removeItem(PENDING_SUBSCRIPTION_KEY);
+      }
+
+      function cleanDashboardUrl() {
+        history.replaceState({}, "", location.pathname);
+      }
+
+      function getPendingSubscription() {
+        const params = new URLSearchParams(location.search);
+        const plan = params.get("plan");
+        const interval = params.get("interval");
+
+        if (
+          VALID_PLAN_CODES.includes(plan) &&
+          ["monthly", "annual"].includes(interval)
+        ) {
+          return { plan, interval };
+        }
+
+        try {
+          const pending = JSON.parse(
+            localStorage.getItem(PENDING_SUBSCRIPTION_KEY) || "null"
+          );
+
+          if (
+            pending &&
+            VALID_PLAN_CODES.includes(pending.plan) &&
+            ["monthly", "annual"].includes(pending.interval)
+          ) {
+            return pending;
+          }
+        } catch {
+          clearPendingSubscription();
+        }
+
+        return null;
+      }
+
+      async function handleBillingFlow(session) {
+        const params = new URLSearchParams(location.search);
+
+        // CASE 1: The seller has returned from Paystack.
+        if (params.get("billing") === "return") {
+          const reference =
+            params.get("reference") || params.get("trxref");
+
+          // Without a reference, there is nothing to retry.
+          if (!reference) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                "We couldn't find your payment reference. Check your payment status before trying again."
+            };
+          }
+
+          try {
+            const response = await fetch("/api/billing-status", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + session.access_token,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify({ reference }),
+              cache: "no-store"
+            });
+
+            const result = await response.json();
+
+            // Only clear the reference after the server confirms payment.
+            if (response.ok && result.success && result.paid) {
+              clearPendingSubscription();
+              cleanDashboardUrl();
+
+              return {
+                message:
+                  "Payment verified! Your " +
+                  (result.plan_code || "Kivo") +
+                  " subscription is active."
+              };
+            }
+
+            // Keep the reference in the URL so refreshing retries verification.
+            if (response.ok && result.success && !result.paid) {
+              return {
+                message:
+                  "Payment has not been confirmed yet. Your subscription has not been activated. Refresh this page later to check again."
+              };
+            }
+
+            return {
+              message:
+                result.error ||
+                "We couldn't verify your payment. Refresh this page to try again."
+            };
+          } catch (error) {
+            console.error("Billing return verification failed:", error);
+
+            // Do not remove the reference on a network or server failure.
+            return {
+              message:
+                "We couldn't contact the payment service. Check your connection and refresh this page to try again."
+            };
+          }
+        }
+
+        // CASE 2: The seller selected a plan before signing in.
+        const pending = getPendingSubscription();
+
+        if (!pending) {
+          return null;
+        }
+
+        try {
+          const response = await fetch("/api/billing-verify", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + session.access_token,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: JSON.stringify({
+              plan_code: pending.plan,
+              billing_interval: pending.interval
+            }),
+            cache: "no-store"
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                result.error ||
+                "We couldn't start checkout. Please try again."
+            };
+          }
+
+          if (
+            typeof result.authorization_url !== "string" ||
+            !result.authorization_url.startsWith("https://")
+          ) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                "The payment service returned an invalid checkout address."
+            };
+          }
+
+          // Prevent stale plan selections from starting checkout again.
+          clearPendingSubscription();
+
+          // Replace the dashboard history entry with the Paystack page.
+          location.replace(result.authorization_url);
+
+          return { redirecting: true };
+        } catch (error) {
+          console.error("Checkout initialization failed:", error);
+
+          clearPendingSubscription();
+          cleanDashboardUrl();
+
+          return {
+            message:
+              "We couldn't connect to the payment service. Please try again."
+          };
+        }
+      }
+
+      const loading = document.getElementById("auth-loading");
+      const loadingTitle = document.getElementById("loading-title");
+      const loadingMessage = document.getElementById("loading-message");
+      const errorBox = document.getElementById("auth-error");
+      const app = document.getElementById("app");
+      const toast = document.getElementById("toast");
+
+      let client;
+      let toastTimeout;
+
+      function showError(message) {
+        loadingTitle.textContent = "We couldn't open your workspace";
+        loadingMessage.textContent =
+          "Check your connection and try again. If the problem continues, sign in again.";
+        document.getElementById("spinner").classList.add("hidden");
+        errorBox.textContent = message;
+        errorBox.classList.remove("hidden");
+
+        const link = document.createElement("a");
+        link.href = LOGIN_URL;
+        link.className = "text-link";
+        link.textContent = " Return to sign in";
+        errorBox.appendChild(document.createElement("br"));
+        errorBox.appendChild(link);
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.remove("hidden");
+
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 3000);
+      }
+
+      function displayUser(user) {
+        const email = user.email || "Kivo Seller";
+        const metadata = user.user_metadata || {};
+        const name =
+          metadata.full_name ||
+          metadata.name ||
+          email.split("@")[0] ||
+          "Kivo Seller";
+
+        document.getElementById("profile-name").textContent = name;
+        document.getElementById("profile-email").textContent = email;
+        document.getElementById("welcome-title").textContent =
+          "Welcome, " + name + "!";
+
+        document.getElementById("avatar").textContent =
+          name.trim().charAt(0).toUpperCase() || "K";
+      }
+
+      async function start() {
+        if (
+          !window.supabase ||
+          typeof window.supabase.createClient !== "function"
+        ) {
+          throw new Error(
+            "The authentication library failed to load. Refresh the page."
+          );
+        }
+
+        client = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_PUBLIC_KEY,
+          {
+            auth: {
+              flowType: "pkce",
+              storageKey: STORAGE_KEY,
+              storage: window.localStorage,
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true
+            }
+          }
+        );
+
+              // Supabase JS handles the OAuth/PKCE code in the URL itself.
+        // Never let a hung request keep the spinner on screen forever.
+        const sessionResult = await Promise.race([
+          client.auth.getSession(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Checking your session took too long.")),
+              10000
+            )
+          )
+        ]);
+
+        if (sessionResult.error) throw sessionResult.error;
+
+        const session = sessionResult.data && sessionResult.data.session;
+
+        if (!session) {
+          location.replace(LOGIN_URL);
+          return;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+        let response;
+
+        try {
+          response = await fetch("/api/me", {
+            method: "GET",
+            headers: {
+              Authorization: "Bearer " + session.access_token,
+              Accept: "application/json"
+            },
+            cache: "no-store",
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          await client.auth.signOut();
+          location.replace(LOGIN_URL);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Kivo's server could not verify your account.");
+        }
+
+        const me = await response.json();
+        displayUser(Object.assign({}, session.user, me.user || {}));
+
+        const billing = await handleBillingFlow(session);
+
+        if (billing && billing.redirecting) return;
+
+        loading.classList.add("hidden");
+        app.classList.remove("hidden");
+
+        if (billing && billing.message) showToast(billing.message);
+
+        document.getElementById("mobile-menu").addEventListener("click", () => {
+          document.getElementById("sidebar").classList.toggle("open");
+        });
+
+        document.getElementById("signout").addEventListener("click", async () => {
+          await client.auth.signOut();
+          location.replace(LOGIN_URL);
+        });
+
+        document.querySelectorAll("[data-action]").forEach((el) => {
+          el.addEventListener("click", (event) => {
+            event.preventDefault();
+            if (el.dataset.action === "support") {
+              location.href = "mailto:support@kivo.com";
+              return;
+            }
+            showToast("This section is coming soon.");
+          });
+        });
+      }
+
+      try {
+        await start();
+      } catch (error) {
+        console.error("Dashboard failed to start:", error);
+        showError(error.message || "Something went wrong.");
+      }
+    })();
+  </script>
+</body>
+</html>
