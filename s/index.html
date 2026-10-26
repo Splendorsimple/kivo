@@ -105,7 +105,7 @@ button,a{font:inherit}
     const chips = [];
     if (contact.whatsapp) chips.push('<a class="chip wa" href="https://wa.me/' + digits(contact.whatsapp) + '" target="_blank" rel="noopener">WhatsApp</a>');
     if (contact.phone) chips.push('<a class="chip" href="tel:' + esc(contact.phone.replace(/[^\d+]/g, "")) + '">Call</a>');
-    if (contact.instagram) chips.push('<a class="chip" href="https://instagram.com/' + encodeURIComponent(contact.instagram) + '" target="_blank" rel="noopener">Instagram</a>');
+    (contact.socials || []).forEach((s) => { if (String(s.url).startsWith("https://")) chips.push('<a class="chip" href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + '</a>'); });
     if (contact.email) chips.push('<a class="chip" href="mailto:' + esc(contact.email) + '">Email</a>');
 
     root.innerHTML = '<div class="wrap"><div class="head"><div class="logo"' + (store.logo_url ? ' style="background-image:url(\'' + esc(store.logo_url) + '\')"' : "") + '>' + (store.logo_url ? "" : esc(initial)) + '</div><h1>' + esc(store.name) + '</h1></div>' +
