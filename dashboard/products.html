@@ -30,6 +30,13 @@ main{max-width:960px;margin:0 auto;padding:20px}
 .old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
 .pill{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--pl);color:var(--p)}
 .pill.draft,.pill.archived{background:#f1f0f5;color:var(--mut)}
+.car{position:relative;aspect-ratio:1;background:var(--pl)}
+.track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
+.track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center;-webkit-user-drag:none}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:#ffffffe0;color:var(--ink);font-size:22px;line-height:1;cursor:pointer;box-shadow:0 1px 6px #0003;display:grid;place-items:center;padding:0 0 3px}
+.nav.prev{left:8px}.nav.next{right:8px}
+.count{position:absolute;right:8px;bottom:8px;background:#000a;color:#fff;font-size:11px;padding:2px 8px;border-radius:99px}
 .tabs{display:flex;gap:8px;max-width:960px;margin:14px auto 0;padding:0 20px}.tabs button{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:99px;cursor:pointer;font-weight:500}.tabs .on{background:var(--pl);color:var(--p);border-color:var(--p)}
 .empty,.box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
 .box{max-width:420px;margin:30px auto;text-align:left}
@@ -142,6 +149,36 @@ textarea{min-height:90px;resize:vertical}
     });
   }
 
+  function carousel(imgs, name) {
+    if (!imgs.length) return '<div class="thumb">▦</div>';
+    const slides = imgs.map((i, n) => '<img class="slide" src="' + esc(imgUrl(i.storage_path)) + '" alt="' + esc(name) + ' photo ' + (n + 1) + '"' + (n ? ' loading="lazy"' : '') + ' draggable="false">').join("");
+    if (imgs.length < 2) return '<div class="car"><div class="track">' + slides + '</div></div>';
+    return '<div class="car"><div class="track" tabindex="0">' + slides + '</div>' +
+      '<button class="nav prev hidden" type="button" aria-label="Previous image">‹</button>' +
+      '<button class="nav next" type="button" aria-label="Next image">›</button>' +
+      '<span class="count">1/' + imgs.length + '</span></div>';
+  }
+
+  function initCarousels() {
+    document.querySelectorAll(".car").forEach((car) => {
+      const prev = car.querySelector(".prev");
+      if (!prev) return;
+      const t = car.querySelector(".track"), next = car.querySelector(".next"), cnt = car.querySelector(".count"), n = t.children.length;
+      const sync = () => {
+        const i = Math.round(t.scrollLeft / t.clientWidth);
+        cnt.textContent = (i + 1) + "/" + n;
+        prev.classList.toggle("hidden", i <= 0);
+        next.classList.toggle("hidden", i >= n - 1);
+      };
+      const go = (d) => t.scrollBy({ left: d * t.clientWidth, behavior: "smooth" });
+      prev.addEventListener("click", () => go(-1));
+      next.addEventListener("click", () => go(1));
+      t.addEventListener("scroll", sync, { passive: true });
+      t.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+      sync();
+    });
+  }
+
   function renderList() {
     $("tabs").classList.remove("hidden");
     $("add").classList.toggle("hidden", view === "archived");
@@ -152,13 +189,14 @@ textarea{min-height:90px;resize:vertical}
       return;
     }
     $("main").innerHTML = '<div class="grid">' + products.map((p) => {
-      const first = sorted(p)[0], stock = stockOf(p);
-      return '<div class="card"><div class="thumb"' + (first ? ' style="background-image:url(\'' + esc(imgUrl(first.storage_path)) + '\')"' : '') + '>' + (first ? '' : '▦') + '</div>' +
+      const imgs = sorted(p), stock = stockOf(p);
+      return '<div class="card">' + carousel(imgs, p.name) +
         '<div class="info"><b>' + esc(p.name) + '</b><div>' + money(p.price_ngn) + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : '') + '</div>' +
         '<span class="pill ' + p.status + '">' + (p.status === "published" ? "Published" : p.status === "archived" ? "Archived" : "Draft") + '</span>' +
         '<span class="muted">' + (p.track_inventory && stock != null ? stock + " in stock" : "Stock not tracked") + '</span>' +
         (view === "archived" ? '<button class="btn alt" data-restore="' + p.id + '" type="button">Restore</button>' : '<button class="btn alt" data-id="' + p.id + '" type="button">Edit</button>') + '</div></div>';
     }).join("") + '</div>';
+    initCarousels();
     document.querySelectorAll("[data-restore]").forEach((b) => b.addEventListener("click", () => restore(b.dataset.restore)));
     document.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => openSheet(products.find((p) => p.id === b.dataset.id))));
   }
