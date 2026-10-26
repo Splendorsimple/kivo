@@ -24,7 +24,7 @@ main{max-width:640px;margin:0 auto;padding:20px;display:flex;flex-direction:colu
 .card h2{font-size:16px;margin:0 0 2px}
 .muted{color:var(--mut);font-size:13px;margin:0}
 label{display:block;font-weight:500;margin:14px 0 4px}
-input[type=text],input[type=email],input[type=tel],textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+input[type=text],input[type=email],input[type=tel],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
 textarea{min-height:90px;resize:vertical}
 .pre{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .pre span{padding:0 0 0 12px;color:var(--mut);white-space:nowrap}
@@ -32,6 +32,7 @@ textarea{min-height:90px;resize:vertical}
 .logo{display:flex;align-items:center;gap:14px;margin-top:10px}
 .logo .pic{width:72px;height:72px;border-radius:16px;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-size:26px;font-weight:700;flex:none}
 .logo div{display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;gap:8px;margin-top:8px}.srow select{flex:0 0 40%}.rmx{border:0;background:var(--pl);color:var(--p);border-radius:10px;width:42px;cursor:pointer;font-size:16px}
 .sw{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:500}
 .sw input{width:20px;height:20px;accent-color:var(--p)}
 .note{background:#fff7e6;border:1px solid #f6dfae;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px}
@@ -53,7 +54,7 @@ textarea{min-height:90px;resize:vertical}
   );
   const BUCKET = "product-images", MAX_BYTES = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
-  let store = null, settings = {}, logoFile = null, removeLogo = false, tt;
+  let store = null, settings = {}, socials = [], logoFile = null, removeLogo = false, tt;
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
@@ -67,10 +68,16 @@ textarea{min-height:90px;resize:vertical}
     else if (/^234\d{10}$/.test(n)) n = "+" + n;
     return /^\+?\d{8,15}$/.test(n) ? n : null;
   }
-  function insta(v) {
-    const h = v.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/.*$/, "");
-    if (!h) return "";
-    return /^[A-Za-z0-9._]{1,30}$/.test(h) ? h : null;
+  const PLATFORMS = [
+    { id: "instagram", label: "Instagram" }, { id: "tiktok", label: "TikTok" },
+    { id: "facebook", label: "Facebook" }, { id: "x", label: "X (Twitter)" },
+    { id: "youtube", label: "YouTube" }, { id: "snapchat", label: "Snapchat" },
+    { id: "telegram", label: "Telegram" }
+  ];
+  // Accepts "@name", "name" or a pasted profile link. Returns null if invalid.
+  function cleanHandle(v) {
+    const h = v.trim().replace(/^https?:\/\/(www\.)?[a-z.]+\.[a-z]+\//i, "").replace(/^add\//i, "").replace(/^@/, "").replace(/[/?#].*$/, "");
+    return /^[A-Za-z0-9._-]{1,50}$/.test(h) ? h : null;
   }
   const logoPath = (url) => { const m = "/object/public/" + BUCKET + "/"; const i = url ? url.indexOf(m) : -1; return i < 0 ? null : decodeURIComponent(url.slice(i + m.length)); };
 
@@ -103,7 +110,7 @@ textarea{min-height:90px;resize:vertical}
       '<label for="wa">WhatsApp number</label><input id="wa" type="tel" placeholder="0803 000 0000" value="' + esc(ct.whatsapp || "") + '">' +
       '<label for="ph">Phone number</label><input id="ph" type="tel" value="' + esc(ct.phone || "") + '">' +
       '<label for="em">Email</label><input id="em" type="email" value="' + esc(ct.email || "") + '">' +
-      '<label for="ig">Instagram</label><input id="ig" type="text" placeholder="@yourstore" value="' + esc(ct.instagram ? "@" + ct.instagram : "") + '"></div>' +
+      '<label>Social media</label><p class="muted">Choose the platforms you want customers to see.</p><div id="socials"></div><button id="addsoc" class="btn alt" type="button" style="margin-top:10px">+ Add social media</button></div>' +
       '<div class="card"><h2>Visibility</h2>' +
       (locked ? '<div class="note">This store is ' + esc(store.status) + '. Contact Kivo support to change that.</div>'
         : '<label class="sw"><input id="live" type="checkbox"' + (store.status === "published" ? " checked" : "") + '> Store is live</label><p class="muted" style="margin-top:6px">Only published products appear to customers. Turn this off to hide your whole store.</p>') + '</div>' +
@@ -119,6 +126,25 @@ textarea{min-height:90px;resize:vertical}
     $("rm").addEventListener("click", () => { logoFile = null; removeLogo = true; $("file").value = ""; paintLogo(); });
     $("slug").addEventListener("blur", () => { $("slug").value = slugify($("slug").value); });
     $("save").addEventListener("click", save);
+    socials = Array.isArray(ct.socials) ? ct.socials.map((s) => ({ platform: s.platform, handle: s.handle })) : (ct.instagram ? [{ platform: "instagram", handle: ct.instagram }] : []);
+    paintSocials();
+    $("addsoc").addEventListener("click", () => {
+      readSocials();
+      if (socials.length >= PLATFORMS.length) return toast("You've added every platform.");
+      socials.push({ platform: "", handle: "" });
+      paintSocials();
+    });
+  }
+
+  function paintSocials() {
+    $("socials").innerHTML = socials.map((s, i) => '<div class="srow"><select><option value="">Platform</option>' +
+      PLATFORMS.map((p) => '<option value="' + p.id + '"' + (p.id === s.platform ? " selected" : "") + '>' + p.label + '</option>').join("") +
+      '</select><input type="text" placeholder="@username" value="' + esc(s.handle) + '"><button class="rmx" data-r="' + i + '" type="button" aria-label="Remove">✕</button></div>').join("");
+    $("socials").querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => { readSocials(); socials.splice(Number(b.dataset.r), 1); paintSocials(); }));
+  }
+
+  function readSocials() {
+    socials = Array.from($("socials").querySelectorAll(".srow")).map((r) => ({ platform: r.querySelector("select").value, handle: r.querySelector("input").value }));
   }
 
   function paintLogo() {
@@ -131,11 +157,20 @@ textarea{min-height:90px;resize:vertical}
 
   async function save() {
     const name = $("name").value.trim(), slug = slugify($("slug").value);
-    const wa = phone($("wa").value), ph = phone($("ph").value), ig = insta($("ig").value), em = $("em").value.trim();
+    const wa = phone($("wa").value), ph = phone($("ph").value), em = $("em").value.trim();
     if (!name) return toast("Enter a store name.");
     if (!slug) return toast("Enter a store link.");
     if (wa === null || ph === null) return toast("Check the phone number. Use digits only, like 08030000000.");
-    if (ig === null) return toast("Instagram handle looks invalid.");
+    readSocials();
+    const cleaned = [], seen = new Set();
+    for (const s of socials) {
+      if (!s.platform && !s.handle.trim()) continue;
+      if (!s.platform) return toast("Choose a platform for each social link.");
+      const label = PLATFORMS.find((p) => p.id === s.platform).label, h = cleanHandle(s.handle);
+      if (!h) return toast("Check the " + label + " username.");
+      if (seen.has(s.platform)) return toast("You added " + label + " twice.");
+      seen.add(s.platform); cleaned.push({ platform: s.platform, handle: h });
+    }
     if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast("Check the email address.");
     $("save").disabled = true;
     try {
@@ -154,7 +189,7 @@ textarea{min-height:90px;resize:vertical}
       if (u.error) throw new Error(u.error.code === "23505" ? "That store link is taken. Try another." : u.error.message);
       if ((logoFile || removeLogo) && oldLogo) await C.storage.from(BUCKET).remove([oldLogo]);
 
-      const contact = { whatsapp: wa || null, phone: ph || null, email: em || null, instagram: ig || null };
+      const contact = { whatsapp: wa || null, phone: ph || null, email: em || null, socials: cleaned };
       const s = await C.from("store_settings").upsert({ store_id: store.id, settings: Object.assign({}, settings, { contact }) }, { onConflict: "store_id" });
       if (s.error) throw s.error;
 
