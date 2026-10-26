@@ -476,6 +476,21 @@
         return null;
       }
 
+      // A request that never answers must not keep the spinner up forever.
+      async function fetchWithTimeout(url, options, ms) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms || 15000);
+
+        try {
+          return await fetch(
+            url,
+            Object.assign({}, options, { signal: controller.signal })
+          );
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
       async function handleBillingFlow(session) {
         const params = new URLSearchParams(location.search);
 
@@ -496,7 +511,7 @@
           }
 
           try {
-            const response = await fetch("/api/billing-status", {
+            const response = await fetchWithTimeout("/api/billing-status", {
               method: "POST",
               headers: {
                 Authorization: "Bearer " + session.access_token,
@@ -554,7 +569,7 @@
         }
 
         try {
-          const response = await fetch("/api/billing-verify", {
+          const response = await fetchWithTimeout("/api/billing-verify", {
             method: "POST",
             headers: {
               Authorization: "Bearer " + session.access_token,
@@ -624,7 +639,12 @@
       let client;
       let toastTimeout;
 
+      let errorShown = false;
+
       function showError(message) {
+        if (errorShown) return;
+        errorShown = true;
+
         loadingTitle.textContent = "We couldn't open your workspace";
         loadingMessage.textContent =
           "Check your connection and try again. If the problem continues, sign in again.";
@@ -636,7 +656,14 @@
         link.href = LOGIN_URL;
         link.className = "text-link";
         link.textContent = " Return to sign in";
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "text-link";
+        retry.textContent = "Try again";
+        retry.addEventListener("click", () => location.reload());
+
         errorBox.appendChild(document.createElement("br"));
+        errorBox.appendChild(retry);
         errorBox.appendChild(link);
       }
 
@@ -662,7 +689,7 @@
         document.getElementById("profile-name").textContent = name;
         document.getElementById("profile-email").textContent = email;
         document.getElementById("welcome-title").textContent =
-          "Welcome, " + name + "!";
+                    "Welcome, " + name + "!";
 
         document.getElementById("avatar").textContent =
           name.trim().charAt(0).toUpperCase() || "K";
@@ -693,7 +720,7 @@
           }
         );
 
-              // Supabase JS handles the OAuth/PKCE code in the URL itself.
+        // Supabase JS handles the OAuth/PKCE code in the URL itself.
         // Never let a hung request keep the spinner on screen forever.
         const sessionResult = await Promise.race([
           client.auth.getSession(),
@@ -754,7 +781,7 @@
 
         if (billing && billing.message) showToast(billing.message);
 
-                const sidebar = document.getElementById("sidebar");
+        const sidebar = document.getElementById("sidebar");
         const menuButton = document.getElementById("mobile-menu");
 
         function closeSidebar() {
@@ -789,12 +816,11 @@
         document.querySelectorAll("[data-action]").forEach((el) => {
           el.addEventListener("click", (event) => {
             event.preventDefault();
-                        const PAGES = { products: "/dashboard/products.html", store: "/dashboard/store.html" };
-          if (PAGES[el.dataset.action]) {
-            location.href = PAGES[el.dataset.action];
-                return;
-              }
-                        }
+            const PAGES = { products: "/dashboard/products.html", store: "/dashboard/store.html" };
+            if (PAGES[el.dataset.action]) {
+              location.href = PAGES[el.dataset.action];
+              return;
+            }
             if (el.dataset.action === "support") {
               location.href = "mailto:support@kivo.com";
               return;
@@ -804,9 +830,18 @@
         });
       }
 
+      // Last line of defence: if anything still hangs, show an error.
+      const watchdog = setTimeout(() => {
+        if (!loading.classList.contains("hidden")) {
+          showError("This is taking longer than expected.");
+        }
+      }, 25000);
+
       try {
         await start();
+        clearTimeout(watchdog);
       } catch (error) {
+        clearTimeout(watchdog);
         console.error("Dashboard failed to start:", error);
         showError(error.message || "Something went wrong.");
       }
