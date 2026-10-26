@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>Store | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,a{font:inherit}
+.hidden{display:none!important}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+.center{text-align:center;color:var(--mut);padding:60px 20px}
+.head{display:flex;gap:14px;align-items:center}
+.logo{width:64px;height:64px;border-radius:16px;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-size:24px;font-weight:700;flex:none}
+.head h1{margin:0;font-size:22px}
+.about{color:var(--mut);margin:12px 0 0;white-space:pre-wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 6px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 14px;color:var(--ink);text-decoration:none;font-weight:500}
+.chip.wa{background:#25d366;border-color:#25d366;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.info{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;flex:1}
+.info b{font-size:14px}
+.old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
+.tag{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fdecef;color:#b4233c}
+.car{position:relative;aspect-ratio:1;background:var(--pl)}
+.track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
+.track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center}
+.ph{display:grid;place-items:center;height:100%;color:var(--p);font-size:30px}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:#ffffffe0;color:var(--ink);font-size:22px;line-height:1;cursor:pointer;box-shadow:0 1px 6px #0003;display:grid;place-items:center;padding:0 0 3px}
+.nav.prev{left:8px}.nav.next{right:8px}
+.count{position:absolute;right:8px;bottom:8px;background:#000a;color:#fff;font-size:11px;padding:2px 8px;border-radius:99px}
+.sheet{position:fixed;inset:0;background:#201b2d66;z-index:10;display:flex;justify-content:center;align-items:flex-end}
+.panel{background:#fff;width:100%;max-width:560px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0}
+.pad{padding:18px 20px 22px}
+.pad h2{margin:0 0 6px}
+.price{font-size:18px;font-weight:700}
+.desc{color:#4a4458;white-space:pre-wrap;margin:12px 0}
+.btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:14px;font-weight:700;cursor:pointer;text-decoration:none;background:#25d366;color:#fff;margin-top:8px}
+.btn.alt{background:var(--pl);color:var(--p)}
+.x{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;border-radius:50%;border:0;background:#ffffffe0;font-size:18px;cursor:pointer}
+.foot{text-align:center;color:var(--mut);font-size:12px;padding:24px 0 8px}
+.foot a{color:var(--p);text-decoration:none}
+</style>
+</head>
+<body>
+<div id="root"><p class="center">Loading store&hellip;</p></div>
+
+<div id="sheet" class="sheet hidden"><div class="panel" id="panel" style="position:relative"></div></div>
+
+<script>
+(async function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const root = $("root");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const slug = (location.pathname.split("/").filter(Boolean)[1] || "").toLowerCase();
+  let store, contact, products = [];
+
+  function fail(title, text) {
+    root.innerHTML = '<div class="center"><h2 style="color:#201b2d">' + esc(title) + '</h2><p>' + esc(text) + '</p></div>';
+  }
+
+  function carousel(p) {
+    if (!p.images.length) return '<div class="car"><div class="ph">▦</div></div>';
+    const slides = p.images.map((u, n) => '<img class="slide" src="' + esc(u) + '" alt="' + esc(p.name) + ' photo ' + (n + 1) + '"' + (n ? ' loading="lazy"' : '') + ' draggable="false">').join("");
+    if (p.images.length < 2) return '<div class="car"><div class="track">' + slides + '</div></div>';
+    return '<div class="car"><div class="track" tabindex="0">' + slides + '</div>' +
+      '<button class="nav prev hidden" type="button" aria-label="Previous image">‹</button>' +
+      '<button class="nav next" type="button" aria-label="Next image">›</button>' +
+      '<span class="count">1/' + p.images.length + '</span></div>';
+  }
+
+  function initCarousels(scope) {
+    scope.querySelectorAll(".car").forEach((car) => {
+      const prev = car.querySelector(".prev");
+      if (!prev) return;
+      const t = car.querySelector(".track"), next = car.querySelector(".next"), cnt = car.querySelector(".count"), n = t.children.length;
+      const sync = () => {
+        const i = Math.round(t.scrollLeft / t.clientWidth);
+        cnt.textContent = (i + 1) + "/" + n;
+        prev.classList.toggle("hidden", i <= 0);
+        next.classList.toggle("hidden", i >= n - 1);
+      };
+      const go = (d) => t.scrollBy({ left: d * t.clientWidth, behavior: "smooth" });
+      prev.addEventListener("click", () => go(-1));
+      next.addEventListener("click", () => go(1));
+      t.addEventListener("scroll", sync, { passive: true });
+      t.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+      sync();
+    });
+  }
+
+  const digits = (v) => String(v || "").replace(/\D/g, "");
+  const priceHtml = (p) => '<span class="price">' + money(p.price_ngn) + '</span>' + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : "");
+
+  function render() {
+    const initial = (store.name || "K").trim().charAt(0).toUpperCase();
+    const chips = [];
+    if (contact.whatsapp) chips.push('<a class="chip wa" href="https://wa.me/' + digits(contact.whatsapp) + '" target="_blank" rel="noopener">WhatsApp</a>');
+    if (contact.phone) chips.push('<a class="chip" href="tel:' + esc(contact.phone.replace(/[^\d+]/g, "")) + '">Call</a>');
+    if (contact.instagram) chips.push('<a class="chip" href="https://instagram.com/' + encodeURIComponent(contact.instagram) + '" target="_blank" rel="noopener">Instagram</a>');
+    if (contact.email) chips.push('<a class="chip" href="mailto:' + esc(contact.email) + '">Email</a>');
+
+    root.innerHTML = '<div class="wrap"><div class="head"><div class="logo"' + (store.logo_url ? ' style="background-image:url(\'' + esc(store.logo_url) + '\')"' : "") + '>' + (store.logo_url ? "" : esc(initial)) + '</div><h1>' + esc(store.name) + '</h1></div>' +
+      (store.description ? '<p class="about">' + esc(store.description) + '</p>' : "") +
+      (chips.length ? '<div class="chips">' + chips.join("") + '</div>' : "") +
+      (products.length ? '<div class="grid">' + products.map((p, i) =>
+        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? "" : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
+        : '<p class="center">No products yet. Check back soon.</p>') +
+      '<div class="foot">Powered by <a href="/">Kivo</a></div></div>';
+    initCarousels(root);
+    root.querySelectorAll("[data-i]").forEach((el) => el.addEventListener("click", () => openSheet(products[Number(el.dataset.i)])));
+  }
+
+  function openSheet(p) {
+    const msg = "Hi " + store.name + ", I'd like to order: " + p.name + " (" + money(p.price_ngn) + "). " + location.href;
+    const order = p.in_stock
+      ? (contact.whatsapp ? '<a class="btn" href="https://wa.me/' + digits(contact.whatsapp) + '?text=' + encodeURIComponent(msg) + '" target="_blank" rel="noopener">Order on WhatsApp</a>'
+        : contact.phone ? '<a class="btn alt" href="tel:' + esc(contact.phone.replace(/[^\d+]/g, "")) + '">Call to order</a>'
+        : contact.email ? '<a class="btn alt" href="mailto:' + esc(contact.email) + '?subject=' + encodeURIComponent("Order: " + p.name) + '">Email to order</a>' : "")
+      : '<span class="tag">Out of stock</span>';
+    $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button>' + carousel(p) +
+      '<div class="pad"><h2>' + esc(p.name) + '</h2><div>' + priceHtml(p) + '</div>' +
+      (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : "") + order + '</div>';
+    initCarousels($("panel"));
+    $("close").addEventListener("click", closeSheet);
+    $("sheet").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+  function closeSheet() { $("sheet").classList.add("hidden"); document.body.style.overflow = ""; }
+  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+
+  if (!slug) return fail("Store not found", "This store link is not valid.");
+  try {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch("/api/storefront?slug=" + encodeURIComponent(slug), { signal: ctl.signal, headers: { Accept: "application/json" } });
+    clearTimeout(timer);
+    if (res.status === 404) return fail("Store not found", "This store doesn't exist or isn't open right now.");
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Unable to load this store.");
+    store = data.store; contact = data.contact || {}; products = data.products || [];
+    document.title = store.name + " | Kivo";
+    render();
+  } catch (e) {
+    fail("Couldn't load this store", "Check your connection and refresh the page.");
+  }
+})();
+</script>
+</body>
+</html>
