@@ -1,475 +1,851 @@
-
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#faf9f6">
-  <meta name="description" content="Kivo gives social sellers one simple home for their products, orders, and online storefront.">
-  <title>Kivo — Your social sales. One simple home.</title>
-  <link rel="icon" type="image/png" href="assets/logo/kivo-icon.png">
-  <link rel="stylesheet" href="css/global.css">
-</head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7fc">
+  <meta name="description" content="Manage your Kivo seller workspace.">
+  <title>Overview | Kivo</title>  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <style>
+    :root {
+      --purple: #6d28d9;
+      --purple-light: #f1eaff;
+      --ink: #201b2d;
+      --muted: #817b90;
+      --line: #ece9f2;
+      --page: #f8f7fc;
+      --white: #fff;
+      --radius: 16px;
+    }
 
-<body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
+    * { box-sizing: border-box; }
 
-  <!-- Navigation -->
-  <header class="site-header">
-    <div class="nav-container">
-      <a class="brand" href="/" aria-label="Kivo home">
-        <img src="assets/logo/kivo-wordmark.png" alt="Kivo">
-      </a>
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 14px "DM Sans", sans-serif;
+    }
 
-      <div class="nav-actions">
-        <a class="nav-login" href="/auth/login.html">Log in</a>
-        <a class="nav-cta" href="/auth/login.html">Build my store <span aria-hidden="true">↗</span></a>
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
 
-        <button
-          class="menu-button"
-          id="menu-button"
-          type="button"
-          aria-label="Open navigation menu"
-          aria-controls="site-menu"
-          aria-expanded="false"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
+    .loading-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .loading-card {
+      width: 100%;
+      max-width: 390px;
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: white;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      margin: 0 auto 18px;
+      border: 3px solid var(--purple-light);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-card p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    #auth-error {
+      margin-top: 14px;
+      color: #b4233d;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .layout { min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 245px;
+      padding: 26px 16px 18px;
+      background: white;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      transition: transform .2s ease;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      margin-bottom: 38px;
+      color: var(--purple);
+      font: 800 25px "Manrope", sans-serif;
+      letter-spacing: -1px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      background: var(--purple);
+      color: white;
+      border-radius: 11px;
+      font-size: 20px;
+    }
+
+    .nav-label {
+      padding: 0 12px;
+      margin-bottom: 12px;
+      color: #a09aaf;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav { display: grid; gap: 5px; }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      color: #6f687e;
+      font-weight: 600;
+    }
+
+    .nav a:hover, .nav a.active {
+      background: var(--purple-light);
+      color: var(--purple);
+    }
+
+    .nav-icon { width: 20px; text-align: center; font-size: 17px; }
+    .sidebar-bottom { margin-top: auto; }
+
+    .help-card {
+      padding: 15px;
+      margin-bottom: 18px;
+      border: 1px solid #eee8ff;
+      border-radius: 13px;
+      background: #f8f6ff;
+    }
+
+    .help-card strong { display: block; margin-bottom: 7px; }
+    .help-card p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .help-card a { color: var(--purple); font-size: 12px; font-weight: 700; }
+
+    .signout {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+      color: #b4233d;
+      font-weight: 700;
+    }
+
+    .main { margin-left: 245px; min-width: 0; }
+
+    .topbar {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 32px;
+      background: white;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font: 700 20px "Manrope", sans-serif;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-weight: 800;
+    }
+
+    .profile-name { font-weight: 700; }
+    .profile-email { margin-top: 3px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+
+    .content { max-width: 1150px; margin: auto; padding: 32px; }
+
+    .welcome {
+      padding: 28px;
+      border-radius: var(--radius);
+      background: linear-gradient(120deg, #6d28d9, #8b5cf6);
+      color: white;
+    }
+
+    .welcome h2 {
+      margin: 0 0 10px;
+      font: 800 26px "Manrope", sans-serif;
+    }
+
+    .welcome p { max-width: 600px; margin: 0; color: #f1eaff; line-height: 1.7; }
+
+    .section-title { margin: 30px 0 15px; font: 700 17px "Manrope", sans-serif; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 22px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+
+    .panel-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 18px;
+      border-radius: 12px;
+      background: var(--purple-light);
+      font-size: 20px;
+    }
+
+    .panel h3 { margin: 0 0 8px; font: 700 16px "Manrope", sans-serif; }
+    .panel p { min-height: 44px; margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
+
+    .panel button {
+      width: 100%;
+      padding: 11px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-weight: 700;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 30;
+      max-width: calc(100vw - 44px);
+      padding: 14px 18px;
+      border-radius: 12px;
+      background: #201b2d;
+      color: white;
+      box-shadow: 0 8px 30px #201b2d25;
+    }
+
+    .menu-button {
+      display: none;
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); box-shadow: 10px 0 30px #201b2d15; }
+      .main { margin-left: 0; }
+      .menu-button { display: block; }
+      .topbar { padding: 14px 20px; }
+      .content { padding: 20px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      .welcome { padding: 22px; }
+      .welcome h2 { font-size: 22px; }
+      .topbar h1 { font-size: 18px; }
+      .profile-email { max-width: 150px; }
+    }
+  </style></head><body>
+  <div id="auth-loading" class="loading-screen">
+    <div class="loading-card">
+      <div class="spinner" id="spinner"></div>
+      <strong id="loading-title">Preparing your workspace</strong>
+      <p id="loading-message">Securely checking your account. Please wait.</p>
+      <div id="auth-error" class="hidden" role="alert"></div>
+    </div>
+  </div>  <div id="app" class="layout hidden">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/">
+        <span class="brand-mark">K</span>
+        <span>Kivo</span>
+      </a>  <div class="nav-label">Workspace</div>
+
+  <nav class="nav" aria-label="Main navigation">
+    <a href="/dashboard/" class="active">
+      <span class="nav-icon">⌂</span> Overview
+    </a>
+    <a href="#" data-action="products">
+      <span class="nav-icon">▦</span> Products
+    </a>
+    <a href="#" data-action="orders">
+      <span class="nav-icon">▤</span> Orders
+    </a>
+    <a href="#" data-action="customers">
+      <span class="nav-icon">♙</span> Customers
+    </a>
+    <a href="#" data-action="store">
+      <span class="nav-icon">◇</span> My store
+    </a>
+    <a href="#" data-action="settings">
+      <span class="nav-icon">⚙</span> Settings
+    </a>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <div class="help-card">
+      <strong>Need a hand?</strong>
+      <p>Get help setting up your Kivo workspace.</p>
+      <a href="mailto:support@kivo.com">Contact support →</a>
+    </div>
+    <button class="signout" id="signout" type="button">
+      Sign out
+    </button>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="menu-button" id="mobile-menu" type="button"
+        aria-label="Toggle navigation">☰</button>
+      <h1>Overview</h1>
     </div>
 
-    <div class="menu-backdrop" id="menu-backdrop" hidden></div>
-
-    <nav class="site-menu" id="site-menu" aria-label="Main navigation" hidden>
-      <p class="menu-heading">Explore Kivo</p>
-      <a href="#features">Features</a>
-      <a href="#how-it-works">How it works</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">Frequently asked questions</a>
-      <a href="/auth/login.html">Log in to your account</a>
-      <a class="button button-primary menu-cta" href="/auth/login.html">Create your seller account <span aria-hidden="true">↗</span></a>
-    </nav>
+    <div class="profile">
+      <div class="avatar" id="avatar">K</div>
+      <div>
+        <div class="profile-name" id="profile-name">Kivo Seller</div>
+        <div class="profile-email" id="profile-email"></div>
+      </div>
+    </div>
   </header>
 
-  <main id="main-content">
-    <!-- Hero -->
-    <section class="hero section-shell">
-      <div class="hero-copy">
-        <div class="eyebrow">BUILT FOR SOCIAL SELLERS</div>
-
-        <h1>Your social sales.<br>One <span>simple home.</span></h1>
-
-        <p class="hero-description">
-          Your customers find you on social media. Kivo gives your products,
-          orders, and storefront one organised place to call home.
-        </p>
-
-        <div class="hero-actions">
-          <a class="button button-primary" href="/auth/login.html">
-            Build my store <span aria-hidden="true">↗</span>
-          </a>
-          <a class="button button-secondary" href="#how-it-works">
-            See how it works <span aria-hidden="true">↓</span>
-          </a>
-        </div>
-
-        <p class="hero-note">
-          Made for ambitious sellers. Designed to keep things simple.
-        </p>
-      </div>
-
-      <!-- Decorative product preview; not live account data -->
-      <div class="hero-visual" aria-label="Illustration of a seller dashboard and online storefront">
-        <div class="preview-glow"></div>
-
-        <div class="floating-label">
-          <span class="floating-label-icon" aria-hidden="true">✓</span>
-          One place for your sales
-        </div>
-
-        <div class="dashboard-preview">
-          <div class="preview-topbar">
-            <div class="preview-brand">
-              <span class="preview-brand-icon" aria-hidden="true">k</span>
-              Kivo dashboard
-            </div>
-            <span class="preview-status">Your business, organised</span>
-          </div>
-
-          <div class="preview-body">
-            <div class="preview-welcome">
-              <div>
-                <h3>Your business at a glance</h3>
-                <p>A clearer view of your store activity.</p>
-              </div>
-              <div class="preview-avatar" aria-hidden="true">KS</div>
-            </div>
-
-            <div class="preview-stats">
-              <div class="preview-stat">
-                <span class="preview-stat-label">Products</span>
-                <strong>Catalogue</strong>
-                <span class="preview-stat-change">In one place</span>
-              </div>
-
-              <div class="preview-stat">
-                <span class="preview-stat-label">Orders</span>
-                <strong>Tracking</strong>
-                <span class="preview-stat-change">Stay organised</span>
-              </div>
-
-              <div class="preview-stat">
-                <span class="preview-stat-label">Your store</span>
-                <strong>Online</strong>
-                <span class="preview-stat-change">Share your link</span>
-              </div>
-            </div>
-
-            <div class="preview-orders">
-              <div class="preview-orders-heading">
-                <span>Your workflow</span>
-                <span>Made simpler ↗</span>
-              </div>
-
-              <div class="preview-order">
-                <div class="order-avatar" aria-hidden="true">01</div>
-                <div class="order-person">
-                  <strong>Add your products</strong>
-                  <small>Build your catalogue</small>
-                </div>
-                <div class="order-amount">
-                  <strong>Step 1</strong>
-                  <small>Organise</small>
-                </div>
-              </div>
-
-              <div class="preview-order">
-                <div class="order-avatar orange" aria-hidden="true">02</div>
-                <div class="order-person">
-                  <strong>Share your storefront</strong>
-                  <small>Send your link to customers</small>
-                </div>
-                <div class="order-amount">
-                  <strong>Step 2</strong>
-                  <small>Connect</small>
-                </div>
-              </div>
-
-              <div class="preview-order">
-                <div class="order-avatar green" aria-hidden="true">03</div>
-                <div class="order-person">
-                  <strong>Manage your orders</strong>
-                  <small>Keep track of what comes in</small>
-                </div>
-                <div class="order-amount">
-                  <strong>Step 3</strong>
-                  <small>Manage</small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="storefront-float">
-          <div class="storefront-top">
-            <div class="storefront-logo" aria-hidden="true">N</div>
-            <div>
-              <strong>Nora Studio</strong>
-              <small>Storefront concept</small>
-            </div>
-          </div>
-
-          <div class="store-products">
-            <div>
-              <div class="store-product-art">
-                <div class="product-shape"></div>
-              </div>
-              <span class="store-product-name">Everyday bag</span>
-              <span class="store-product-price">Product preview</span>
-            </div>
-
-            <div>
-              <div class="store-product-art brown">
-                <div class="product-shape bag"></div>
-              </div>
-              <span class="store-product-name">Classic tote</span>
-              <span class="store-product-price">Product preview</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Social platform logos -->
-    <section class="platform-strip" aria-labelledby="platform-heading">
-      <div class="section-shell">
-        <p id="platform-heading">Made for the places you already sell</p>
-
-        <div class="platform-list">
-          <div class="platform-item">
-            <span class="platform-symbol whatsapp" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M20 11.7a8.1 8.1 0 0 1-12 7.1L4 20l1.2-3.8A8.1 8.1 0 1 1 20 11.7Z"
-                  stroke="currentColor" stroke-width="1.8"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M8.5 8.1c.3-.6.6-.6 1-.6h.4c.2 0 .4.1.5.4l.8 1.8c.1.2.1.4-.1.6l-.6.7c-.2.2-.2.4 0 .6.6 1 1.4 1.8 2.4 2.3.2.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.7.8c.3.1.4.3.4.5 0 .5-.2 1-.6 1.3-.5.5-1.2.7-1.9.6-1.2-.2-2.5-.9-3.7-2-1.2-1.1-2-2.4-2.3-3.6-.2-.9 0-1.7.5-2.2Z"
-                  fill="currentColor"/>
-              </svg>
-            </span>
-            <span>WhatsApp</span>
-          </div>
-
-          <div class="platform-item">
-            <span class="platform-symbol instagram" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2"
-                  stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="12" cy="12" r="4.1"
-                  stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="17.6" cy="6.8" r="1.1" fill="currentColor"/>
-              </svg>
-            </span>
-            <span>Instagram</span>
-          </div>
-
-          <div class="platform-item">
-            <span class="platform-symbol tiktok" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M14 3v11.2a4.1 4.1 0 1 1-3.5-4.1"
-                  stroke="#25F4EE" stroke-width="3.5"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M14 3v11.2a4.1 4.1 0 1 1-3.5-4.1"
-                  stroke="#FE2C55" stroke-width="2.1"
-                  stroke-linecap="round" stroke-linejoin="round"
-                  transform="translate(1.2 .4)"/>
-                <path d="M14 3v7.1c1.5 1.5 3.2 2.2 5.1 2.2"
-                  stroke="currentColor" stroke-width="3.1"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <span>TikTok</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- How it works -->
-    <section class="section section-shell" id="how-it-works">
-      <div class="section-heading">
-        <span class="section-kicker">HOW KIVO WORKS</span>
-        <h2>Less back-and-forth.<br>More business.</h2>
-        <p>A straightforward way to organise the essentials of selling online.</p>
-      </div>
-
-      <div class="steps-grid">
-        <article class="step-card">
-          <div class="step-number">01</div>
-          <h3>Set up your store</h3>
-          <p>Bring your products together in one catalogue that is easier to maintain.</p>
-        </article>
-
-        <article class="step-card">
-          <div class="step-number">02</div>
-          <h3>Share one link</h3>
-          <p>Give customers a storefront link they can open and browse online.</p>
-        </article>
-
-        <article class="step-card">
-          <div class="step-number">03</div>
-          <h3>Manage your sales</h3>
-          <p>Keep products and order activity organised as your business grows.</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- Features -->
-    <section class="section features-section" id="features">
-      <div class="section-shell">
-        <div class="section-heading">
-          <span class="section-kicker">ONE HOME FOR YOUR BUSINESS</span>
-          <h2>Built around the way you sell.</h2>
-          <p>Practical tools for sellers who want a more organised way to run their online business.</p>
-        </div>
-
-        <div class="features-grid">
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">▦</div>
-            <h3>Product catalogue</h3>
-            <p>Keep product details, prices, images, and available options organised together.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">↗</div>
-            <h3>Shareable storefront</h3>
-            <p>Give customers one place to explore your products from a link you can share.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">☷</div>
-            <h3>Order management</h3>
-            <p>Keep order information and fulfilment activity together instead of scattered across chats.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">⌁</div>
-            <h3>Business overview</h3>
-            <p>Work towards a clearer view of your store activity as your Kivo setup develops.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- Pricing -->
-    <section class="section section-shell" id="pricing">
-      <div class="section-heading">
-        <span class="section-kicker">SIMPLE, TRANSPARENT PRICING</span>
-        <h2>Choose the plan for your next stage.</h2>
-        <p>Pick a plan based on the size of your catalogue and the team you need.</p>
-      </div>
-
-      <div class="pricing-grid">
-        <article class="pricing-card">
-          <h3 class="plan-name">Beginner</h3>
-          <p class="plan-description">For sellers getting organised.</p>
-          <div class="plan-price">₦4,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Up to 30 products</li>
-            <li>1 store</li>
-            <li>1 team member</li>
-          </ul>
-          <a class="button button-secondary plan-button" href="/auth/login.html?plan=beginner&interval=monthly">Get started</a>
-        </article>
-
-        <article class="pricing-card featured">
-          <span class="plan-badge">Popular choice</span>
-          <h3 class="plan-name">Growth</h3>
-          <p class="plan-description">For sellers building momentum.</p>
-          <div class="plan-price">₦9,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Up to 150 products</li>
-            <li>1 store</li>
-            <li>2 team members</li>
-          </ul>
-          <a class="button button-primary plan-button" href="/auth/login.html?plan=growth&interval=monthly">Get started</a>
-        </article>
-
-        <article class="pricing-card">
-          <h3 class="plan-name">Pro</h3>
-          <p class="plan-description">For established, busy sellers.</p>
-          <div class="plan-price">₦15,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Up to 500 products</li>
-            <li>1 store</li>
-            <li>5 team members</li>
-          </ul>
-          <a class="button button-secondary plan-button" href="/auth/login.html?plan=pro&interval=monthly">Get started</a>
-        </article>
-
-        <article class="pricing-card">
-          <h3 class="plan-name">Platinum</h3>
-          <p class="plan-description">For sellers running multiple stores.</p>
-          <div class="plan-price">₦22,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Unlimited products</li>
-            <li>Up to 3 stores</li>
-            <li>15 team members per store</li>
-          </ul>
-          <a class="button button-secondary plan-button" href="/auth/login.html?plan=platinum&interval=monthly">Get started</a>
-        </article>
-      </div>
-
-      <p class="annual-note">
-        Annual subscription options are planned to offer savings compared with monthly billing.
-        Confirm the available billing options before subscribing.
-      </p>
-    </section>
-
-    <!-- FAQ -->
-    <section class="section faq-section" id="faq">
-      <div class="section-shell">
-        <div class="section-heading">
-          <span class="section-kicker">GOOD QUESTIONS</span>
-          <h2>Before you get started.</h2>
-          <p>A few things to know about Kivo.</p>
-        </div>
-
-        <div class="faq-list">
-          <details>
-            <summary>Who is Kivo for?</summary>
-            <p>Kivo is being built for social sellers who want a more organised way to manage products, share a storefront, and keep track of orders.</p>
-          </details>
-
-          <details>
-            <summary>Do my customers need a Kivo account?</summary>
-            <p>The intended shopping experience supports guest checkout, so customers can shop without needing a seller account. The complete checkout flow must be implemented and tested before this is available in production.</p>
-          </details>
-
-          <details>
-            <summary>Can I share my store on social media?</summary>
-            <p>The storefront is designed to be shared through channels such as WhatsApp, Instagram, and TikTok. Availability depends on the relevant storefront features being implemented.</p>
-          </details>
-
-          <details>
-            <summary>Can I change my plan later?</summary>
-            <p>The plans are structured for different business sizes. Plan changes should be handled through the subscription and billing features once those flows are available.</p>
-          </details>
-
-          <details>
-            <summary>Does Kivo receive my customers' sales payments?</summary>
-            <p>Kivo's subscription fee is separate from the money you receive for your own sales. Seller payment processing needs to be configured and verified before accepting live payments.</p>
-          </details>
-        </div>
-      </div>
-    </section>
-
-    <!-- Final CTA -->
-    <section class="final-cta-wrap">
-      <div class="section-shell">
-        <div class="final-cta">
-          <span class="section-kicker">YOUR BUSINESS, MORE ORGANISED</span>
-          <h2>Give your social sales a home.</h2>
-          <p>Bring your products, storefront, and sales workflow together with Kivo.</p>
-          <a class="button" href="/auth/login.html">
-            Explore Kivo <span aria-hidden="true">↗</span>
-          </a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="section-shell footer-inner">
-      <div class="footer-brand">
-        <a class="brand" href="/" aria-label="Kivo home">
-          <img src="assets/logo/kivo-wordmark.png" alt="Kivo">
-        </a>
-        <p class="footer-note">One simple home for your social sales.</p>
-      </div>
-
-      <div class="footer-links">
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#faq">FAQs</a>
-        <a href="/auth/login.html">Log in</a>
-      </div>
-
-      <p class="footer-copyright">
-        © <span id="current-year">2026</span> Kivo. All rights reserved.
-      </p>
+  <section class="content">
+    <div class="welcome">
+      <h2 id="welcome-title">Welcome to Kivo</h2>
+      <p>Your business workspace is ready. Use the navigation to access your seller tools.</p>
     </div>
-  </footer>
 
-  <script src="js/app.js"></script>
+    <h2 class="section-title">Your workspace</h2>
+
+    <div class="grid">
+      <article class="panel">
+        <div class="panel-icon">▦</div>
+        <h3>Products</h3>
+        <p>Manage your product catalogue and inventory.</p>
+        <button type="button" data-action="products">Open products</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">▤</div>
+        <h3>Orders</h3>
+        <p>Review and manage your customer orders.</p>
+        <button type="button" data-action="orders">Open orders</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">♙</div>
+        <h3>Customers</h3>
+        <p>Keep track of customers and their details.</p>
+        <button type="button" data-action="customers">Open customers</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">◇</div>
+        <h3>Storefront</h3>
+        <p>Access your store setup and storefront settings.</p>
+        <button type="button" data-action="store">Manage store</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">⚙</div>
+        <h3>Settings</h3>
+        <p>Manage your workspace preferences.</p>
+        <button type="button" data-action="settings">Open settings</button>
+      </article>
+
+      <article class="panel">
+        <div class="panel-icon">?</div>
+        <h3>Help and support</h3>
+        <p>Contact support if you need help with Kivo.</p>
+        <button type="button" data-action="support">Get help</button>
+      </article>
+    </div>
+  </section>
+</main>
+
+  </div>  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  <script>
+    (async function initialiseKivoDashboard() {
+      "use strict";
+
+      const SUPABASE_URL =
+        "https://uhgnuuuvjkzfipynnhzk.supabase.co";
+
+      const SUPABASE_PUBLIC_KEY =
+        "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy";
+
+      const STORAGE_KEY = "kivo-auth";
+      const LOGIN_URL = location.origin + "/auth/login.html";
+      const PENDING_SUBSCRIPTION_KEY = "kivo-pending-subscription";
+
+      const VALID_PLAN_CODES = [
+        "beginner",
+        "growth",
+        "pro",
+        "platinum"
+      ];
+
+      function clearPendingSubscription() {
+        localStorage.removeItem(PENDING_SUBSCRIPTION_KEY);
+      }
+
+      function cleanDashboardUrl() {
+        history.replaceState({}, "", location.pathname);
+      }
+
+      function getPendingSubscription() {
+        const params = new URLSearchParams(location.search);
+        const plan = params.get("plan");
+        const interval = params.get("interval");
+
+        if (
+          VALID_PLAN_CODES.includes(plan) &&
+          ["monthly", "annual"].includes(interval)
+        ) {
+          return { plan, interval };
+        }
+
+        try {
+          const pending = JSON.parse(
+            localStorage.getItem(PENDING_SUBSCRIPTION_KEY) || "null"
+          );
+
+          if (
+            pending &&
+            VALID_PLAN_CODES.includes(pending.plan) &&
+            ["monthly", "annual"].includes(pending.interval)
+          ) {
+            return pending;
+          }
+        } catch {
+          clearPendingSubscription();
+        }
+
+        return null;
+      }
+
+      // A request that never answers must not keep the spinner up forever.
+      async function fetchWithTimeout(url, options, ms) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms || 15000);
+
+        try {
+          return await fetch(
+            url,
+            Object.assign({}, options, { signal: controller.signal })
+          );
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      async function handleBillingFlow(session) {
+        const params = new URLSearchParams(location.search);
+
+        // CASE 1: The seller has returned from Paystack.
+        if (params.get("billing") === "return") {
+          const reference =
+            params.get("reference") || params.get("trxref");
+
+          // Without a reference, there is nothing to retry.
+          if (!reference) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                "We couldn't find your payment reference. Check your payment status before trying again."
+            };
+          }
+
+          try {
+            const response = await fetchWithTimeout("/api/billing-status", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + session.access_token,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify({ reference }),
+              cache: "no-store"
+            });
+
+            const result = await response.json();
+
+            // Only clear the reference after the server confirms payment.
+            if (response.ok && result.success && result.paid) {
+              clearPendingSubscription();
+              cleanDashboardUrl();
+
+              return {
+                message:
+                  "Payment verified! Your " +
+                  (result.plan_code || "Kivo") +
+                  " subscription is active."
+              };
+            }
+
+            // Keep the reference in the URL so refreshing retries verification.
+            if (response.ok && result.success && !result.paid) {
+              return {
+                message:
+                  "Payment has not been confirmed yet. Your subscription has not been activated. Refresh this page later to check again."
+              };
+            }
+
+            return {
+              message:
+                result.error ||
+                "We couldn't verify your payment. Refresh this page to try again."
+            };
+          } catch (error) {
+            console.error("Billing return verification failed:", error);
+
+            // Do not remove the reference on a network or server failure.
+            return {
+              message:
+                "We couldn't contact the payment service. Check your connection and refresh this page to try again."
+            };
+          }
+        }
+
+        // CASE 2: The seller selected a plan before signing in.
+        const pending = getPendingSubscription();
+
+        if (!pending) {
+          return null;
+        }
+
+        try {
+          const response = await fetchWithTimeout("/api/billing-verify", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + session.access_token,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: JSON.stringify({
+              plan_code: pending.plan,
+              billing_interval: pending.interval
+            }),
+            cache: "no-store"
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                result.error ||
+                "We couldn't start checkout. Please try again."
+            };
+          }
+
+          if (
+            typeof result.authorization_url !== "string" ||
+            !result.authorization_url.startsWith("https://")
+          ) {
+            clearPendingSubscription();
+            cleanDashboardUrl();
+
+            return {
+              message:
+                "The payment service returned an invalid checkout address."
+            };
+          }
+
+          // Prevent stale plan selections from starting checkout again.
+          clearPendingSubscription();
+
+          // Replace the dashboard history entry with the Paystack page.
+          location.replace(result.authorization_url);
+
+          return { redirecting: true };
+        } catch (error) {
+          console.error("Checkout initialization failed:", error);
+
+          clearPendingSubscription();
+          cleanDashboardUrl();
+
+          return {
+            message:
+              "We couldn't connect to the payment service. Please try again."
+          };
+        }
+      }
+
+      const loading = document.getElementById("auth-loading");
+      const loadingTitle = document.getElementById("loading-title");
+      const loadingMessage = document.getElementById("loading-message");
+      const errorBox = document.getElementById("auth-error");
+      const app = document.getElementById("app");
+      const toast = document.getElementById("toast");
+
+      let client;
+      let toastTimeout;
+
+      let errorShown = false;
+
+      function showError(message) {
+        if (errorShown) return;
+        errorShown = true;
+
+        loadingTitle.textContent = "We couldn't open your workspace";
+        loadingMessage.textContent =
+          "Check your connection and try again. If the problem continues, sign in again.";
+        document.getElementById("spinner").classList.add("hidden");
+        errorBox.textContent = message;
+        errorBox.classList.remove("hidden");
+
+        const link = document.createElement("a");
+        link.href = LOGIN_URL;
+        link.className = "text-link";
+        link.textContent = " Return to sign in";
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "text-link";
+        retry.textContent = "Try again";
+        retry.addEventListener("click", () => location.reload());
+
+        errorBox.appendChild(document.createElement("br"));
+        errorBox.appendChild(retry);
+        errorBox.appendChild(link);
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.remove("hidden");
+
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 3000);
+      }
+
+      function displayUser(user) {
+        const email = user.email || "Kivo Seller";
+        const metadata = user.user_metadata || {};
+        const name =
+          metadata.full_name ||
+          metadata.name ||
+          email.split("@")[0] ||
+          "Kivo Seller";
+
+        document.getElementById("profile-name").textContent = name;
+        document.getElementById("profile-email").textContent = email;
+        document.getElementById("welcome-title").textContent =
+                    "Welcome, " + name + "!";
+
+        document.getElementById("avatar").textContent =
+          name.trim().charAt(0).toUpperCase() || "K";
+      }
+
+      async function start() {
+        if (
+          !window.supabase ||
+          typeof window.supabase.createClient !== "function"
+        ) {
+          throw new Error(
+            "The authentication library failed to load. Refresh the page."
+          );
+        }
+
+        client = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_PUBLIC_KEY,
+          {
+            auth: {
+              flowType: "pkce",
+              storageKey: STORAGE_KEY,
+              storage: window.localStorage,
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true
+            }
+          }
+        );
+
+        // Supabase JS handles the OAuth/PKCE code in the URL itself.
+        // Never let a hung request keep the spinner on screen forever.
+        const sessionResult = await Promise.race([
+          client.auth.getSession(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Checking your session took too long.")),
+              10000
+            )
+          )
+        ]);
+
+        if (sessionResult.error) throw sessionResult.error;
+
+        const session = sessionResult.data && sessionResult.data.session;
+
+        if (!session) {
+          location.replace(LOGIN_URL);
+          return;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+        let response;
+
+        try {
+          response = await fetch("/api/me", {
+            method: "GET",
+            headers: {
+              Authorization: "Bearer " + session.access_token,
+              Accept: "application/json"
+            },
+            cache: "no-store",
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          await client.auth.signOut();
+          location.replace(LOGIN_URL);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Kivo's server could not verify your account.");
+        }
+
+        const me = await response.json();
+        displayUser(Object.assign({}, session.user, me.user || {}));
+
+        const billing = await handleBillingFlow(session);
+
+        if (billing && billing.redirecting) return;
+
+        loading.classList.add("hidden");
+        app.classList.remove("hidden");
+
+        if (billing && billing.message) showToast(billing.message);
+
+        const sidebar = document.getElementById("sidebar");
+        const menuButton = document.getElementById("mobile-menu");
+
+        function closeSidebar() {
+          sidebar.classList.remove("open");
+        }
+
+        menuButton.addEventListener("click", () => {
+          sidebar.classList.toggle("open");
+        });
+
+        // Tap anywhere outside the menu to close it
+        document.addEventListener("click", (event) => {
+          if (!sidebar.classList.contains("open")) return;
+          if (sidebar.contains(event.target) || menuButton.contains(event.target)) return;
+          closeSidebar();
+        });
+
+        // Close on Escape and after choosing an item
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") closeSidebar();
+        });
+
+        sidebar.querySelectorAll("a, button").forEach((el) => {
+          el.addEventListener("click", closeSidebar);
+        });
+
+        document.getElementById("signout").addEventListener("click", async () => {
+          await client.auth.signOut();
+          location.replace(LOGIN_URL);
+        });
+
+        document.querySelectorAll("[data-action]").forEach((el) => {
+          el.addEventListener("click", (event) => {
+            event.preventDefault();
+            const PAGES = { products: "/dashboard/products.html", store: "/dashboard/store.html" };
+            if (PAGES[el.dataset.action]) {
+              location.href = PAGES[el.dataset.action];
+              return;
+            }
+            if (el.dataset.action === "support") {
+              location.href = "mailto:support@kivo.com";
+              return;
+            }
+            showToast("This section is coming soon.");
+          });
+        });
+      }
+
+      // Last line of defence: if anything still hangs, show an error.
+      const watchdog = setTimeout(() => {
+        if (!loading.classList.contains("hidden")) {
+          showError("This is taking longer than expected.");
+        }
+      }, 25000);
+
+      try {
+        await start();
+        clearTimeout(watchdog);
+      } catch (error) {
+        clearTimeout(watchdog);
+        console.error("Dashboard failed to start:", error);
+        showError(error.message || "Something went wrong.");
+      }
+    })();
+  </script>
 </body>
 </html>
