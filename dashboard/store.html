@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>My store | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+.bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar a{color:var(--p);text-decoration:none;font-weight:500}
+.bar h1{font-size:18px;margin:0;flex:1}
+.btn{border:0;background:var(--p);color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--pl);color:var(--p)}
+.btn:disabled{opacity:.6}
+main{max-width:640px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h2{font-size:16px;margin:0 0 2px}
+.muted{color:var(--mut);font-size:13px;margin:0}
+label{display:block;font-weight:500;margin:14px 0 4px}
+input[type=text],input[type=email],input[type=tel],textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.pre{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pre span{padding:0 0 0 12px;color:var(--mut);white-space:nowrap}
+.pre input{border:0;padding-left:2px}
+.logo{display:flex;align-items:center;gap:14px;margin-top:10px}
+.logo .pic{width:72px;height:72px;border-radius:16px;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-size:26px;font-weight:700;flex:none}
+.logo div{display:flex;flex-direction:column;gap:6px}
+.sw{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:500}
+.sw input{width:20px;height:20px;accent-color:var(--p)}
+.note{background:#fff7e6;border:1px solid #f6dfae;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<header class="bar"><a href="/dashboard/">&larr; Overview</a><h1>My store</h1></header>
+<main id="main"><p class="muted">Loading your store&hellip;</p></main>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(async function () {
+  "use strict";
+  const C = supabase.createClient(
+    "https://uhgnuuuvjkzfipynnhzk.supabase.co",
+    "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy",
+    { auth: { flowType: "pkce", storageKey: "kivo-auth", storage: window.localStorage, persistSession: true, autoRefreshToken: true } }
+  );
+  const BUCKET = "product-images", MAX_BYTES = 5 * 1024 * 1024;
+  const $ = (id) => document.getElementById(id);
+  let store = null, settings = {}, logoFile = null, removeLogo = false, tt;
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 3500); };
+
+  // Nigerian-friendly phone cleanup: 0803... -> +234803...
+  function phone(v) {
+    let n = v.replace(/[\s()-]/g, "");
+    if (!n) return "";
+    if (/^0\d{10}$/.test(n)) n = "+234" + n.slice(1);
+    else if (/^234\d{10}$/.test(n)) n = "+" + n;
+    return /^\+?\d{8,15}$/.test(n) ? n : null;
+  }
+  function insta(v) {
+    const h = v.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/.*$/, "");
+    if (!h) return "";
+    return /^[A-Za-z0-9._]{1,30}$/.test(h) ? h : null;
+  }
+  const logoPath = (url) => { const m = "/object/public/" + BUCKET + "/"; const i = url ? url.indexOf(m) : -1; return i < 0 ? null : decodeURIComponent(url.slice(i + m.length)); };
+
+  const { data: { session } } = await C.auth.getSession();
+  if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function load() {
+    const { data, error } = await C.from("stores").select("id,name,slug,description,logo_url,status").eq("owner_id", session.user.id).order("created_at").limit(1);
+    if (error) throw error;
+    store = data[0] || null;
+    if (!store) {
+      $("main").innerHTML = '<div class="card"><h2>No store yet</h2><p class="muted">Create your store from the Products page first.</p><p><a class="btn" style="display:inline-block;text-decoration:none;margin-top:12px" href="/dashboard/products.html">Go to Products</a></p></div>';
+      return;
+    }
+    const { data: ss } = await C.from("store_settings").select("settings").eq("store_id", store.id).maybeSingle();
+    settings = (ss && ss.settings) || {};
+    render();
+  }
+
+  function render() {
+    const ct = settings.contact || {}, locked = store.status === "suspended" || store.status === "archived";
+    $("main").innerHTML =
+      '<div class="card"><h2>Brand</h2><p class="muted">How customers see your store.</p>' +
+      '<div class="logo"><div id="pic" class="pic"></div><div><button id="pick" class="btn alt" type="button">Upload logo</button><button id="rm" class="btn alt hidden" type="button">Remove</button><input id="file" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"></div></div>' +
+      '<label for="name">Store name *</label><input id="name" type="text" maxlength="100" value="' + esc(store.name) + '">' +
+      '<label for="slug">Store link *</label><div class="pre"><span>kivo-bay.vercel.app/s/</span><input id="slug" type="text" maxlength="60" value="' + esc(store.slug) + '"></div>' +
+      '<p class="muted" style="margin-top:6px">Changing this link breaks any old links you have shared.</p>' +
+      '<label for="desc">About your store</label><textarea id="desc" maxlength="1000">' + esc(store.description || "") + '</textarea></div>' +
+      '<div class="card"><h2>Contact</h2><p class="muted">Customers use these to reach you.</p>' +
+      '<label for="wa">WhatsApp number</label><input id="wa" type="tel" placeholder="0803 000 0000" value="' + esc(ct.whatsapp || "") + '">' +
+      '<label for="ph">Phone number</label><input id="ph" type="tel" value="' + esc(ct.phone || "") + '">' +
+      '<label for="em">Email</label><input id="em" type="email" value="' + esc(ct.email || "") + '">' +
+      '<label for="ig">Instagram</label><input id="ig" type="text" placeholder="@yourstore" value="' + esc(ct.instagram ? "@" + ct.instagram : "") + '"></div>' +
+      '<div class="card"><h2>Visibility</h2>' +
+      (locked ? '<div class="note">This store is ' + esc(store.status) + '. Contact Kivo support to change that.</div>'
+        : '<label class="sw"><input id="live" type="checkbox"' + (store.status === "published" ? " checked" : "") + '> Store is live</label><p class="muted" style="margin-top:6px">Only published products appear to customers. Turn this off to hide your whole store.</p>') + '</div>' +
+      '<button id="save" class="btn" type="button">Save changes</button>';
+    paintLogo();
+    $("pick").addEventListener("click", () => $("file").click());
+    $("file").addEventListener("change", () => {
+      const f = $("file").files[0]; if (!f) return;
+      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) { $("file").value = ""; return toast("Use a JPG, PNG or WebP image."); }
+      if (f.size > MAX_BYTES) { $("file").value = ""; return toast("Logo must be under 5 MB."); }
+      logoFile = f; removeLogo = false; paintLogo();
+    });
+    $("rm").addEventListener("click", () => { logoFile = null; removeLogo = true; $("file").value = ""; paintLogo(); });
+    $("slug").addEventListener("blur", () => { $("slug").value = slugify($("slug").value); });
+    $("save").addEventListener("click", save);
+  }
+
+  function paintLogo() {
+    const pic = $("pic"), src = logoFile ? URL.createObjectURL(logoFile) : (!removeLogo && store.logo_url) || "";
+    pic.style.backgroundImage = src ? 'url("' + src + '")' : "";
+    pic.textContent = src ? "" : (store.name || "K").trim().charAt(0).toUpperCase();
+    $("rm").classList.toggle("hidden", !src);
+    $("pick").textContent = src ? "Change logo" : "Upload logo";
+  }
+
+  async function save() {
+    const name = $("name").value.trim(), slug = slugify($("slug").value);
+    const wa = phone($("wa").value), ph = phone($("ph").value), ig = insta($("ig").value), em = $("em").value.trim();
+    if (!name) return toast("Enter a store name.");
+    if (!slug) return toast("Enter a store link.");
+    if (wa === null || ph === null) return toast("Check the phone number. Use digits only, like 08030000000.");
+    if (ig === null) return toast("Instagram handle looks invalid.");
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast("Check the email address.");
+    $("save").disabled = true;
+    try {
+      const row = { name, slug, description: $("desc").value.trim() || null };
+      if ($("live")) row.status = $("live").checked ? "published" : "draft";
+      const oldLogo = logoPath(store.logo_url);
+      if (logoFile) {
+        const ext = logoFile.type === "image/png" ? "png" : logoFile.type === "image/webp" ? "webp" : "jpg";
+        const path = store.id + "/logo/" + crypto.randomUUID() + "." + ext;
+        const up = await C.storage.from(BUCKET).upload(path, logoFile, { contentType: logoFile.type, cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        row.logo_url = C.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      } else if (removeLogo) row.logo_url = null;
+
+      const u = await C.from("stores").update(row).eq("id", store.id);
+      if (u.error) throw new Error(u.error.code === "23505" ? "That store link is taken. Try another." : u.error.message);
+      if ((logoFile || removeLogo) && oldLogo) await C.storage.from(BUCKET).remove([oldLogo]);
+
+      const contact = { whatsapp: wa || null, phone: ph || null, email: em || null, instagram: ig || null };
+      const s = await C.from("store_settings").upsert({ store_id: store.id, settings: Object.assign({}, settings, { contact }) }, { onConflict: "store_id" });
+      if (s.error) throw s.error;
+
+      logoFile = null; removeLogo = false;
+      await load(); toast("Store saved.");
+    } catch (e) { toast(e.message || "Could not save your store."); }
+    if ($("save")) $("save").disabled = false;
+  }
+
+  try { await load(); }
+  catch (e) { $("main").innerHTML = '<div class="card"><h2>Could not load your store</h2><p class="muted">' + esc(e.message) + '</p></div>'; }
+})();
+</script>
+</body>
+</html>
