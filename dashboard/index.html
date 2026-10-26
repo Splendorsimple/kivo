@@ -789,9 +789,11 @@
         document.querySelectorAll("[data-action]").forEach((el) => {
           el.addEventListener("click", (event) => {
             event.preventDefault();
-                        if (el.dataset.action === "products") {
-              location.href = "/dashboard/products.html";
-              return;
+                        const PAGES = { products: "/dashboard/products.html", store: "/dashboard/store.html" };
+          if (PAGES[el.dataset.action]) {
+            location.href = PAGES[el.dataset.action];
+                return;
+              }
                         }
             if (el.dataset.action === "support") {
               location.href = "mailto:support@kivo.com";
