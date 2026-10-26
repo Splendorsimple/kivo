@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>Products | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+.bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar a{color:var(--p);text-decoration:none;font-weight:500}
+.bar h1{font-size:18px;margin:0;flex:1}
+.btn{border:0;background:var(--p);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--pl);color:var(--p)}
+.btn.bad{background:#fdecef;color:#b4233c}
+.btn:disabled{opacity:.6}
+main{max-width:960px;margin:0 auto;padding:20px}
+.muted{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.thumb{aspect-ratio:1;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-size:28px}
+.info{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+.info b{font-size:15px}
+.old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
+.pill{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--pl);color:var(--p)}
+.pill.draft{background:#f1f0f5;color:var(--mut)}
+.empty,.box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+.box{max-width:420px;margin:30px auto;text-align:left}
+label{display:block;font-weight:500;margin:12px 0 4px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.sheet{position:fixed;inset:0;background:#201b2d66;z-index:10;display:flex;justify-content:center;align-items:flex-end}
+.panel{background:#fff;width:100%;max-width:560px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:20px}
+.panel h2{margin:0 0 4px}
+.imgs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.img{width:76px;height:76px;border-radius:10px;background:center/cover;position:relative;border:2px solid transparent}
+.img.main{border-color:var(--p)}
+.img button{position:absolute;border:0;border-radius:6px;font-size:11px;padding:2px 5px;cursor:pointer;background:#000a;color:#fff}
+.img .x{top:3px;right:3px}.img .m{bottom:3px;left:3px}
+.actions{display:flex;gap:10px;margin-top:18px}.actions .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a href="/dashboard/">&larr; Overview</a>
+  <h1>Products</h1>
+  <button id="add" class="btn hidden" type="button">+ Add product</button>
+</header>
+<main id="main"><p class="muted">Loading your products&hellip;</p></main>
+
+<div id="sheet" class="sheet hidden">
+  <div class="panel">
+    <h2 id="ptitle">Add product</h2>
+    <label for="name">Name *</label>
+    <input id="name" type="text" maxlength="200">
+    <div class="row">
+      <div><label for="price">Price (₦) *</label><input id="price" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div><label for="compare">Compare-at (₦)</label><input id="compare" type="number" min="0" step="1" inputmode="numeric"></div>
+    </div>
+    <label for="desc">Description</label>
+    <textarea id="desc"></textarea>
+    <div class="row">
+      <div><label for="status">Status</label>
+        <select id="status"><option value="draft">Draft</option><option value="published">Published</option></select></div>
+      <div><label for="stock">Stock quantity</label><input id="stock" type="number" min="0" step="1" inputmode="numeric"></div>
+    </div>
+    <label><input id="track" type="checkbox" checked> Track inventory</label>
+    <label for="files">Images (up to 5, JPG/PNG/WebP, max 5 MB each)</label>
+    <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+    <div id="imgs" class="imgs"></div>
+    <div class="actions">
+      <button id="cancel" class="btn alt" type="button">Cancel</button>
+      <button id="save" class="btn" type="button">Save</button>
+    </div>
+    <div class="actions"><button id="archive" class="btn bad hidden" type="button">Archive product</button></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(async function () {
+  "use strict";
+  const C = supabase.createClient(
+    "https://uhgnuuuvjkzfipynnhzk.supabase.co",
+    "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy",
+    { auth: { flowType: "pkce", storageKey: "kivo-auth", storage: window.localStorage, persistSession: true, autoRefreshToken: true } }
+  );
+  const BUCKET = "product-images", MAX_IMAGES = 5, MAX_BYTES = 5 * 1024 * 1024;
+  const $ = (id) => document.getElementById(id);
+  let store = null, products = [], editing = null, tt;
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const imgUrl = (p) => C.storage.from(BUCKET).getPublicUrl(p).data.publicUrl;
+  const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "item";
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 3500); };
+  const sorted = (p) => (p.product_images || []).slice().sort((a, b) => (b.is_primary - a.is_primary) || (a.sort_order - b.sort_order));
+  const stockOf = (p) => { const i = (p.inventory || []).find((r) => !r.variant_id); return i ? i.quantity : null; };
+
+  const { data: { session } } = await C.auth.getSession();
+  if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function loadStore() {
+    const { data, error } = await C.from("stores").select("id,name,slug").eq("owner_id", session.user.id).order("created_at").limit(1);
+    if (error) throw error;
+    store = data[0] || null;
+  }
+
+  async function loadProducts() {
+    const { data, error } = await C.from("products")
+      .select("id,name,description,price_ngn,compare_at_price_ngn,status,track_inventory,product_images(id,storage_path,is_primary,sort_order),inventory(quantity,variant_id)")
+      .eq("store_id", store.id).neq("status", "archived").order("created_at", { ascending: false });
+    if (error) throw error;
+    products = data;
+  }
+
+  function renderStoreSetup() {
+    $("add").classList.add("hidden");
+    $("main").innerHTML = '<div class="box"><h2 style="margin:0 0 4px">Create your store</h2><p class="muted">You need a store before adding products.</p>' +
+      '<label for="sname">Store name</label><input id="sname" type="text" maxlength="100">' +
+      '<label for="sslug">Store link</label><input id="sslug" type="text" maxlength="60" placeholder="my-store">' +
+      '<div class="actions"><button id="mk" class="btn" type="button">Create store</button></div></div>';
+    $("sname").addEventListener("input", () => { $("sslug").value = slugify($("sname").value); });
+    $("mk").addEventListener("click", async () => {
+      const name = $("sname").value.trim(), slug = slugify($("sslug").value);
+      if (!name) return toast("Enter a store name.");
+      $("mk").disabled = true;
+      const { error } = await C.from("stores").insert({ owner_id: session.user.id, name, slug });
+      $("mk").disabled = false;
+      if (error) return toast(error.code === "23505" ? "That store link is taken. Try another." : error.message);
+      await start();
+    });
+  }
+
+  function renderList() {
+    $("add").classList.remove("hidden");
+    if (!products.length) {
+      $("main").innerHTML = '<div class="empty"><h2 style="margin:0 0 6px">No products yet</h2><p class="muted">Add your first product to start building your catalogue.</p></div>';
+      return;
+    }
+    $("main").innerHTML = '<div class="grid">' + products.map((p) => {
+      const first = sorted(p)[0], stock = stockOf(p);
+      return '<div class="card"><div class="thumb"' + (first ? ' style="background-image:url(\'' + esc(imgUrl(first.storage_path)) + '\')"' : '') + '>' + (first ? '' : '▦') + '</div>' +
+        '<div class="info"><b>' + esc(p.name) + '</b><div>' + money(p.price_ngn) + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : '') + '</div>' +
+        '<span class="pill ' + p.status + '">' + (p.status === "published" ? "Published" : "Draft") + '</span>' +
+        '<span class="muted">' + (p.track_inventory && stock != null ? stock + " in stock" : "Stock not tracked") + '</span>' +
+        '<button class="btn alt" data-id="' + p.id + '" type="button">Edit</button></div></div>';
+    }).join("") + '</div>';
+    document.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => openSheet(products.find((p) => p.id === b.dataset.id))));
+  }
+
+  function renderImages() {
+    const imgs = editing ? sorted(editing) : [];
+    $("imgs").innerHTML = imgs.map((i) => '<div class="img' + (i.is_primary ? " main" : "") + '" style="background-image:url(\'' + esc(imgUrl(i.storage_path)) + '\')">' +
+      '<button class="x" data-del="' + i.id + '" type="button">✕</button>' + (i.is_primary ? "" : '<button class="m" data-main="' + i.id + '" type="button">Main</button>') + '</div>').join("");
+    $("imgs").querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => removeImage(b.dataset.del)));
+    $("imgs").querySelectorAll("[data-main]").forEach((b) => b.addEventListener("click", () => makeMain(b.dataset.main)));
+  }
+
+  function openSheet(p) {
+    editing = p || null;
+    $("ptitle").textContent = p ? "Edit product" : "Add product";
+    $("name").value = p ? p.name : "";
+    $("price").value = p ? p.price_ngn : "";
+    $("compare").value = p && p.compare_at_price_ngn ? p.compare_at_price_ngn : "";
+    $("desc").value = p && p.description ? p.description : "";
+    $("status").value = p && p.status === "published" ? "published" : "draft";
+    $("track").checked = p ? p.track_inventory : true;
+    $("stock").value = p && stockOf(p) != null ? stockOf(p) : "";
+    $("files").value = "";
+    $("archive").classList.toggle("hidden", !p);
+    renderImages();
+    $("sheet").classList.remove("hidden");
+  }
+  const closeSheet = () => { $("sheet").classList.add("hidden"); editing = null; };
+
+  async function refresh(keepId) {
+    await loadProducts(); renderList();
+    if (keepId) { editing = products.find((p) => p.id === keepId) || null; renderImages(); }
+  }
+
+  async function removeImage(id) {
+    const img = editing.product_images.find((i) => i.id === id);
+    const { error } = await C.from("product_images").delete().eq("id", id);
+    if (error) return toast(error.message);
+    await C.storage.from(BUCKET).remove([img.storage_path]);
+    await refresh(editing.id);
+  }
+
+  async function makeMain(id) {
+    await C.from("product_images").update({ is_primary: false }).eq("product_id", editing.id);
+    const { error } = await C.from("product_images").update({ is_primary: true }).eq("id", id);
+    if (error) return toast(error.message);
+    await refresh(editing.id);
+  }
+
+  async function save() {
+    const name = $("name").value.trim(), price = Number($("price").value), cmp = $("compare").value;
+    const files = Array.from($("files").files);
+    if (!name) return toast("Enter a product name.");
+    if (!Number.isInteger(price) || price < 0) return toast("Enter a whole-naira price.");
+    if (cmp !== "" && (!Number.isInteger(Number(cmp)) || Number(cmp) < 0)) return toast("Compare-at price must be a whole number.");
+    const have = editing ? (editing.product_images || []).length : 0;
+    if (have + files.length > MAX_IMAGES) return toast("A product can have up to " + MAX_IMAGES + " images.");
+    for (const f of files) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) return toast("Use JPG, PNG or WebP images.");
+      if (f.size > MAX_BYTES) return toast(f.name + " is over 5 MB.");
+    }
+    const row = { name, description: $("desc").value.trim() || null, price_ngn: price, compare_at_price_ngn: cmp === "" ? null : Number(cmp), status: $("status").value, track_inventory: $("track").checked };
+    $("save").disabled = true;
+    try {
+      let id = editing && editing.id, res;
+      if (id) { res = await C.from("products").update(row).eq("id", id); }
+      else {
+        row.store_id = store.id; row.slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
+        res = await C.from("products").insert(row).select("id").single();
+        id = res.data && res.data.id;
+      }
+      if (res.error) throw res.error;
+      if (row.track_inventory && $("stock").value !== "") {
+        await C.from("inventory").update({ quantity: Math.max(0, parseInt($("stock").value, 10) || 0) }).eq("product_id", id).is("variant_id", null);
+      }
+      for (let n = 0; n < files.length; n++) {
+        const ext = files[n].type === "image/png" ? "png" : files[n].type === "image/webp" ? "webp" : "jpg";
+        const path = store.id + "/" + id + "/" + crypto.randomUUID() + "." + ext;
+        const up = await C.storage.from(BUCKET).upload(path, files[n], { contentType: files[n].type, cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        const ins = await C.from("product_images").insert({ product_id: id, storage_path: path, sort_order: have + n, is_primary: have === 0 && n === 0 });
+        if (ins.error) throw ins.error;
+      }
+      await refresh(); closeSheet(); toast("Product saved.");
+    } catch (e) { toast(e.message || "Could not save the product."); }
+    $("save").disabled = false;
+  }
+
+  async function archive() {
+    if (!confirm("Archive this product? It will be hidden from your store.")) return;
+    const { error } = await C.from("products").update({ status: "archived" }).eq("id", editing.id);
+    if (error) return toast(error.message);
+    await refresh(); closeSheet(); toast("Product archived.");
+  }
+
+  async function start() {
+    try {
+      await loadStore();
+      if (!store) return renderStoreSetup();
+      await loadProducts(); renderList();
+    } catch (e) { $("main").innerHTML = '<div class="empty"><p>Could not load your products.</p><p class="muted">' + esc(e.message) + '</p></div>'; }
+  }
+
+  $("add").addEventListener("click", () => openSheet(null));
+  $("cancel").addEventListener("click", closeSheet);
+  $("save").addEventListener("click", save);
+  $("archive").addEventListener("click", archive);
+  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
+  await start();
+})();
+</script>
+</body>
+  </html>
+  
