@@ -66,7 +66,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
   const $ = (id) => document.getElementById(id);
   const TABS = { new: ["pending"], progress: ["confirmed", "processing", "shipped"], done: ["delivered", "refunded"], cancelled: ["cancelled"] };
   const STATUS = { pending: "New", confirmed: "Confirmed", processing: "Processing", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
-  const PAY = { unpaid: "Unpaid", pending: "Payment pending", paid: "Paid", failed: "Payment failed", refunded: "Refunded", partially_refunded: "Part refunded" };
+  const PAY = { unpaid: "Unpaid", pending: "Customer says paid", paid: "Paid", failed: "Payment failed", refunded: "Refunded", partially_refunded: "Part refunded" };
   const METHOD = { bank_transfer: "Bank transfer", cash_on_delivery: "Pay on delivery", online: "Online payment link", whatsapp: "WhatsApp", other: "Other" };
   const NEXT = { pending: ["confirm", "Confirm order"], confirmed: ["process", "Start processing"], processing: ["ship", "Mark as shipped"], shipped: ["deliver", "Mark as delivered"] };
   let store = null, orders = [], tab = "new", open = null, tt, session;
@@ -115,7 +115,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       '<p>' + esc([a.address, a.city].filter(Boolean).join(", ")) + '</p>' +
       (o.customer_note ? '<h3>Note</h3><p>' + esc(o.customer_note) + '</p>' : "") +
       '<h3>Payment</h3><p>' + esc(METHOD[o.payment_method] || "Not chosen") + '</p>' +
-      (needPay && canPay ? '<p class="mut">Check your bank app or payment account for ' + money(o.total_ngn) + ' with reference ' + esc(o.order_number) + '. Once it has arrived, tap Mark as paid. You can then confirm and ship the order.</p>' : "") +
+      (needPay && canPay ? '<p class="mut">' + (o.payment_status === "pending" ? "The customer says they have paid. " : "") + 'Check your bank app or payment account for ' + money(o.total_ngn) + ' with reference ' + esc(o.order_number) + '. Once it has arrived, tap Mark as paid. You can then confirm and ship the order.</p>' : "") +
       '<div class="acts">' +
       (needPay && canPay ? '<button class="btn" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
       (n ? '<button class="btn" data-a="' + n[0] + '" data-id="' + o.id + '" type="button">' + n[1] + '</button>' : "") +
