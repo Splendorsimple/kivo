@@ -185,8 +185,8 @@ textarea.f{min-height:60px;resize:vertical}
     const label = prepaid ? "I've paid, send details on WhatsApp" : pay.type === "whatsapp" ? "Send order on WhatsApp" : "Message the seller on WhatsApp";
     const wa = data.whatsapp_url
       ? (prepaid ? '<p class="msg" style="margin:16px 0 0"><b>Step 2: Send your details to the seller</b></p><p class="msg">After paying, tap below to send your order details on WhatsApp, then attach your payment receipt.</p>' : "") +
-        '<a class="btn" href="' + esc(data.whatsapp_url) + '" target="_blank" rel="noopener">' + label + '</a>'
-      : "";
+        '<a class="btn"' + (prepaid ? ' data-claim="1"' : "") + ' href="' + esc(data.whatsapp_url) + '" target="_blank" rel="noopener">' + label + '</a>'
+      : (prepaid ? '<button class="btn" data-claim="1" type="button">I have paid</button>' : "");
     const tail = prepaid ? '<p class="msg">The seller will check your payment, then confirm and ship your order.</p>'
       : pay.type === "whatsapp" ? '<p class="msg">Tap the button, then press send in WhatsApp to confirm your order and arrange payment.</p>'
       : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>';
@@ -233,6 +233,14 @@ textarea.f{min-height:60px;resize:vertical}
       if (!res.ok || !data.success) throw new Error(data.error || "We could not place your order.");
       cart = {}; saveCart();
       $("panel").innerHTML = confirmation(data);
+      const claimBtn = $("panel").querySelector("[data-claim]");
+      if (claimBtn && data.claim_token) claimBtn.addEventListener("click", () => {
+        try {
+          fetch("/api/order-paid-claim", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug, order_number: data.order_number, token: data.claim_token }) });
+        } catch (e) {}
+        if (claimBtn.tagName === "BUTTON") { claimBtn.disabled = true; claimBtn.textContent = "Thanks! The seller will verify your payment."; }
+      });
       $("close").addEventListener("click", closeSheet);
     } catch (e) {
       toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
