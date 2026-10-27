@@ -3,6 +3,17 @@ const { createClient } = require("@supabase/supabase-js");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
+function paymentDetails(m) {
+  const c = m.config || {};
+  if (m.type === "bank_transfer") {
+    return { bank_name: str(c.bank_name, 60), account_number: str(c.account_number, 20), account_name: str(c.account_name, 100) };
+  }
+  if (m.type === "online" && typeof c.url === "string" && c.url.startsWith("https://")) {
+    return { url: c.url.slice(0, 300) };
+  }
+  return null;
+}
 const fail = (res, status, error) => res.status(status).json({ success: false, error });
 
 module.exports = async function handler(req, res) {
@@ -25,6 +36,11 @@ module.exports = async function handler(req, res) {
   // ---- Validate input (nothing from the browser is trusted for prices) ----
   const slug = typeof body.slug === "string" ? body.slug.trim().toLowerCase() : "";
   if (!/^[a-z0-9-]{1,60}$/.test(slug)) return fail(res, 400, "Invalid store.");
+
+  const methodId = typeof body.payment_method_id === "string" ? body.payment_method_id : "";
+  if (methodId && methodId !== "whatsapp" && !UUID.test(methodId)) {
+    return fail(res, 400, "Please choose how you would like to pay.");
+  }
 
   const wanted = new Map();
   const rawItems = Array.isArray(body.items) ? body.items.slice(0, 30) : [];
@@ -63,6 +79,29 @@ module.exports = async function handler(req, res) {
       .from("stores").select("id, name").eq("slug", slug).eq("status", "published").maybeSingle();
     if (storeError) throw storeError;
     if (!store) return fail(res, 404, "This store is not open right now.");
+
+    // Payment options come from the seller's saved settings, never the browser.
+    const { data: settingsRow } = await supabase
+      .from("store_settings").select("settings").eq("store_id", store.id).maybeSingle();
+    const waNumber = settingsRow && settingsRow.settings && settingsRow.settings.contact
+      ? String(settingsRow.settings.contact.whatsapp || "").replace(/\D/g, "") : "";
+
+    const { data: methodRows, error: methodError } = await supabase
+      .from("store_payment_methods").select("id, method_type, display_name, public_config")
+      .eq("store_id", store.id).eq("is_enabled", true).order("sort_order").order("created_at");
+    if (methodError) throw methodError;
+
+    let method;
+    if (methodId === "whatsapp" || (!methodId && waNumber)) {
+      if (!waNumber) return fail(res, 400, "Please choose how you would like to pay.");
+      method = { type: "whatsapp", label: "WhatsApp", config: {} };
+    } else {
+      const row = methodId ? (methodRows || []).find((m) => m.id === methodId) : (methodRows || [])[0];
+      if (methodId && !row) return fail(res, 400, "That payment option is no longer available.");
+      method = row
+        ? { type: row.method_type, label: row.display_name, config: row.public_config || {} }
+        : { type: "other", label: "Pay the seller directly", config: {} };
+    }
 
     // Prices and availability always come from the database.
     const ids = Array.from(wanted.keys());
@@ -103,7 +142,8 @@ module.exports = async function handler(req, res) {
         store_id: store.id,
         customer_id: customerId,
         order_number: orderNumber,
-        source: "whatsapp",
+        source: method.type === "whatsapp" ? "whatsapp" : "storefront",
+        payment_method: method.type,
         order_status: "pending",
         payment_status: "unpaid",
         subtotal_ngn: subtotal,
@@ -135,18 +175,14 @@ module.exports = async function handler(req, res) {
     );
     if (itemsError) throw itemsError;
 
-    // The seller's WhatsApp number is read here, never sent by the browser.
     let whatsappUrl = null;
-    const { data: settingsRow } = await supabase
-      .from("store_settings").select("settings").eq("store_id", store.id).maybeSingle();
-    const wa = settingsRow && settingsRow.settings && settingsRow.settings.contact
-      ? String(settingsRow.settings.contact.whatsapp || "").replace(/\D/g, "") : "";
+    const wa = waNumber;
 
     if (wa) {
       const message =
         "Hi " + store.name + ", I just placed order " + order.order_number + ":\n" +
         lines.map((l) => "- " + l.qty + " x " + l.p.name + " (" + money(l.lineTotal) + ")").join("\n") +
-        "\nTotal: " + money(subtotal) +
+        "\nTotal: " + money(subtotal) + "\nPayment: " + method.label +
         "\nName: " + name + "\nPhone: " + phone +
         "\nAddress: " + address + ", " + city +
         (note ? "\nNote: " + note : "");
@@ -157,6 +193,7 @@ module.exports = async function handler(req, res) {
       success: true,
       order_number: order.order_number,
       total_ngn: subtotal,
+      payment: { type: method.type, label: method.label, details: paymentDetails(method) },
       whatsapp_url: whatsappUrl
     });
   } catch (error) {
@@ -173,4 +210,4 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
-  
+                                 
