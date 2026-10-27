@@ -187,9 +187,24 @@ module.exports = async function handler(req, res) {
       };
     }
 
+    const { data: methodRows } = await supabase
+      .from("store_payment_methods")
+      .select("id, method_type, display_name")
+      .eq("store_id", store.id)
+      .eq("is_enabled", true)
+      .order("sort_order")
+      .order("created_at");
+
+    const paymentMethods = (methodRows || []).map((m) => ({
+      id: m.id,
+      type: m.method_type,
+      label: m.display_name
+    }));
+
     return res.status(200).json({
       success: true,
       store,
+      payment_methods: paymentMethods,
       contact,
       products: publicProducts
     });
