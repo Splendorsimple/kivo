@@ -54,7 +54,7 @@ textarea{min-height:90px;resize:vertical}
   );
   const BUCKET = "product-images", MAX_BYTES = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
-  let store = null, settings = {}, socials = [], logoFile = null, removeLogo = false, tt;
+  let store = null, settings = {}, methods = [], socials = [], logoFile = null, removeLogo = false, tt;
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
@@ -94,6 +94,8 @@ textarea{min-height:90px;resize:vertical}
     }
     const { data: ss } = await C.from("store_settings").select("settings").eq("store_id", store.id).maybeSingle();
     settings = (ss && ss.settings) || {};
+    const { data: pm } = await C.from("store_payment_methods").select("id,method_type,display_name,provider,public_config,is_enabled").eq("store_id", store.id);
+    methods = pm || [];
     render();
   }
 
@@ -111,6 +113,16 @@ textarea{min-height:90px;resize:vertical}
       '<label for="ph">Phone number</label><input id="ph" type="tel" value="' + esc(ct.phone || "") + '">' +
       '<label for="em">Email</label><input id="em" type="email" value="' + esc(ct.email || "") + '">' +
       '<label>Social media</label><p class="muted">Choose the platforms you want customers to see.</p><div id="socials"></div><button id="addsoc" class="btn alt" type="button" style="margin-top:10px">+ Add social media</button></div>' +
+      '<div class="card"><h2>Payment methods</h2><p class="muted">Choose how customers can pay you. Customers who prefer to chat can always use WhatsApp.</p>' +
+      '<label class="sw"><input id="bk_on" type="checkbox"' + (pmOn("bank_transfer") ? " checked" : "") + '> Bank transfer</label><div id="bk_box">' +
+      '<input class="" id="bk_n" type="text" placeholder="Bank name" maxlength="60" style="margin-top:8px" value="' + esc(pmCfg("bank_transfer").bank_name) + '">' +
+      '<input id="bk_a" type="text" inputmode="numeric" placeholder="Account number (10 digits)" maxlength="10" style="margin-top:8px" value="' + esc(pmCfg("bank_transfer").account_number) + '">' +
+      '<input id="bk_h" type="text" placeholder="Account name" maxlength="100" style="margin-top:8px" value="' + esc(pmCfg("bank_transfer").account_name) + '"></div>' +
+      '<label class="sw"><input id="cod_on" type="checkbox"' + (pmOn("cash_on_delivery") ? " checked" : "") + '> Pay on delivery</label>' +
+      '<label class="sw"><input id="lk_on" type="checkbox"' + (pmOn("online") ? " checked" : "") + '> Online payment link</label><div id="lk_box">' +
+      '<input id="lk_l" type="text" placeholder="Button name, e.g. Pay by card" maxlength="60" style="margin-top:8px" value="' + esc(pmRow("online") ? pmRow("online").display_name : "") + '">' +
+      '<input id="lk_u" type="text" placeholder="https://your-payment-link" maxlength="300" style="margin-top:8px" value="' + esc(pmCfg("online").url) + '">' +
+      '<p class="muted" style="margin-top:6px">Paste a payment page link from Paystack, Flutterwave or similar. Customers open it to pay you directly.</p></div></div>' +
       '<div class="card"><h2>Visibility</h2>' +
       (locked ? '<div class="note">This store is ' + esc(store.status) + '. Contact Kivo support to change that.</div>'
         : '<label class="sw"><input id="live" type="checkbox"' + (store.status === "published" ? " checked" : "") + '> Store is live</label><p class="muted" style="margin-top:6px">Only published products appear to customers. Turn this off to hide your whole store.</p>') + '</div>' +
@@ -126,6 +138,10 @@ textarea{min-height:90px;resize:vertical}
     $("rm").addEventListener("click", () => { logoFile = null; removeLogo = true; $("file").value = ""; paintLogo(); });
     $("slug").addEventListener("blur", () => { $("slug").value = slugify($("slug").value); });
     $("save").addEventListener("click", save);
+    [["bk_on", "bk_box"], ["lk_on", "lk_box"]].forEach(([c, b]) => {
+      const sync = () => $(b).classList.toggle("hidden", !$(c).checked);
+      $(c).addEventListener("change", sync); sync();
+    });
     socials = Array.isArray(ct.socials) ? ct.socials.map((s) => ({ platform: s.platform, handle: s.handle })) : (ct.instagram ? [{ platform: "instagram", handle: ct.instagram }] : []);
     paintSocials();
     $("addsoc").addEventListener("click", () => {
@@ -134,6 +150,26 @@ textarea{min-height:90px;resize:vertical}
       socials.push({ platform: "", handle: "" });
       paintSocials();
     });
+  }
+
+  const pmRow = (t) => methods.find((m) => m.method_type === t);
+  const pmOn = (t) => !!(pmRow(t) && pmRow(t).is_enabled);
+  const pmCfg = (t) => (pmRow(t) && pmRow(t).public_config) || {};
+
+  async function savePayments(specs) {
+    const order = { bank_transfer: 1, cash_on_delivery: 2, online: 3 };
+    for (const t of Object.keys(order)) {
+      const spec = specs.find((x) => x.type === t), row = pmRow(t);
+      if (spec) {
+        const vals = { display_name: spec.name, provider: spec.provider || null, public_config: spec.cfg, is_enabled: true };
+        const r = row ? await C.from("store_payment_methods").update(vals).eq("id", row.id)
+          : await C.from("store_payment_methods").insert(Object.assign({ store_id: store.id, method_type: t, sort_order: order[t] }, vals));
+        if (r.error) throw r.error;
+      } else if (row && row.is_enabled) {
+        const r = await C.from("store_payment_methods").update({ is_enabled: false }).eq("id", row.id);
+        if (r.error) throw r.error;
+      }
+    }
   }
 
   function paintSocials() {
@@ -172,6 +208,21 @@ textarea{min-height:90px;resize:vertical}
       seen.add(s.platform); cleaned.push({ platform: s.platform, handle: h });
     }
     if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast("Check the email address.");
+    const pmSpecs = [];
+    if ($("bk_on").checked) {
+      const bn = $("bk_n").value.trim(), ba = $("bk_a").value.replace(/\s/g, ""), bh = $("bk_h").value.trim();
+      if (bn.length < 2) return toast("Enter the bank name.");
+      if (!/^\d{10}$/.test(ba)) return toast("Account number must be 10 digits.");
+      if (bh.length < 2) return toast("Enter the account name.");
+      pmSpecs.push({ type: "bank_transfer", name: "Bank transfer", cfg: { bank_name: bn, account_number: ba, account_name: bh } });
+    }
+    if ($("cod_on").checked) pmSpecs.push({ type: "cash_on_delivery", name: "Pay on delivery", cfg: {} });
+    if ($("lk_on").checked) {
+      const ll = $("lk_l").value.trim() || "Pay online", lu = $("lk_u").value.trim();
+      let ok = false; try { ok = new URL(lu).protocol === "https:"; } catch (e) {}
+      if (!ok) return toast("Payment link must start with https://");
+      pmSpecs.push({ type: "online", provider: "link", name: ll.slice(0, 60), cfg: { url: lu } });
+    }
     $("save").disabled = true;
     try {
       const row = { name, slug, description: $("desc").value.trim() || null };
@@ -192,6 +243,7 @@ textarea{min-height:90px;resize:vertical}
       const contact = { whatsapp: wa || null, phone: ph || null, email: em || null, socials: cleaned };
       const s = await C.from("store_settings").upsert({ store_id: store.id, settings: Object.assign({}, settings, { contact }) }, { onConflict: "store_id" });
       if (s.error) throw s.error;
+      await savePayments(pmSpecs);
 
       logoFile = null; removeLogo = false;
       await load(); toast("Store saved.");
@@ -205,3 +257,4 @@ textarea{min-height:90px;resize:vertical}
 </script>
 </body>
 </html>
+
