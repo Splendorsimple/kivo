@@ -26,18 +26,6 @@ button,a{font:inherit}
 .info{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;flex:1}
 .info b{font-size:14px}
 .old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
-.card{cursor:pointer}
-.buy{margin-top:6px;border:0;border-radius:10px;padding:10px;background:var(--p);color:#fff;font-weight:700;cursor:pointer}
-.btn.pur{background:var(--p)}
-.cartbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:8;max-width:560px;margin:0 auto}
-.cartbar .btn{margin:0;box-shadow:0 6px 20px #6d28d955}
-.row2{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
-.qty{display:flex;align-items:center;gap:10px}
-.qty button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:16px}
-.f{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-top:8px;font:inherit;background:#fff}
-textarea.f{min-height:60px;resize:vertical}
-.msg{color:var(--mut);font-size:13px;margin:8px 0 0}
-.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;z-index:20;max-width:90%}
 .tag{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fdecef;color:#b4233c}
 .car{position:relative;aspect-ratio:1;background:var(--pl)}
 .track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
@@ -56,6 +44,7 @@ textarea.f{min-height:60px;resize:vertical}
 .btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:14px;font-weight:700;cursor:pointer;text-decoration:none;background:#25d366;color:#fff;margin-top:8px}
 .btn.alt{background:var(--pl);color:var(--p)}
 .x{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;border-radius:50%;border:0;background:#ffffffe0;font-size:18px;cursor:pointer}
+foot{display:block}
 .foot{text-align:center;color:var(--mut);font-size:12px;padding:24px 0 8px}
 .foot a{color:var(--p);text-decoration:none}
 </style>
@@ -63,8 +52,6 @@ textarea.f{min-height:60px;resize:vertical}
 <body>
 <div id="root"><p class="center">Loading store&hellip;</p></div>
 
-<div id="cartbar" class="cartbar hidden"><button class="btn pur" id="opencart" type="button"></button></div>
-<div id="toast" class="toast hidden" role="status"></div>
 <div id="sheet" class="sheet hidden"><div class="panel" id="panel" style="position:relative"></div></div>
 
 <script>
@@ -119,95 +106,35 @@ textarea.f{min-height:60px;resize:vertical}
     const chips = [];
     if (contact.whatsapp) chips.push('<a class="chip wa" href="https://wa.me/' + digits(contact.whatsapp) + '" target="_blank" rel="noopener">WhatsApp</a>');
     if (contact.phone) chips.push('<a class="chip" href="tel:' + esc(contact.phone.replace(/[^\d+]/g, "")) + '">Call</a>');
-    (contact.socials || []).forEach((s) => { if (String(s.url).startsWith("https://")) chips.push('<a class="chip" href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + '</a>'); });
+    if (contact.instagram) chips.push('<a class="chip" href="https://instagram.com/' + encodeURIComponent(contact.instagram) + '" target="_blank" rel="noopener">Instagram</a>');
     if (contact.email) chips.push('<a class="chip" href="mailto:' + esc(contact.email) + '">Email</a>');
 
     root.innerHTML = '<div class="wrap"><div class="head"><div class="logo"' + (store.logo_url ? ' style="background-image:url(\'' + esc(store.logo_url) + '\')"' : "") + '>' + (store.logo_url ? "" : esc(initial)) + '</div><h1>' + esc(store.name) + '</h1></div>' +
       (store.description ? '<p class="about">' + esc(store.description) + '</p>' : "") +
       (chips.length ? '<div class="chips">' + chips.join("") + '</div>' : "") +
       (products.length ? '<div class="grid">' + products.map((p, i) =>
-        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? '<button class="buy" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
+        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? "" : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
         : '<p class="center">No products yet. Check back soon.</p>') +
       '<div class="foot">Powered by <a href="/">Kivo</a></div></div>';
     initCarousels(root);
-    root.querySelectorAll(".card").forEach((card, i) => card.addEventListener("click", (e) => { if (e.target.closest(".nav")) return; if (e.target.closest(".buy")) { add(products[i].id); return; } openSheet(products[i]); }));
+    root.querySelectorAll("[data-i]").forEach((el) => el.addEventListener("click", () => openSheet(products[Number(el.dataset.i)])));
   }
 
   function openSheet(p) {
-    const order = p.in_stock ? '<button class="btn pur" id="addcart" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>';
+    const msg = "Hi " + store.name + ", I'd like to order: " + p.name + " (" + money(p.price_ngn) + "). " + location.href;
+    const order = p.in_stock
+      ? (contact.whatsapp ? '<a class="btn" href="https://wa.me/' + digits(contact.whatsapp) + '?text=' + encodeURIComponent(msg) + '" target="_blank" rel="noopener">Order on WhatsApp</a>'
+        : contact.phone ? '<a class="btn alt" href="tel:' + esc(contact.phone.replace(/[^\d+]/g, "")) + '">Call to order</a>'
+        : contact.email ? '<a class="btn alt" href="mailto:' + esc(contact.email) + '?subject=' + encodeURIComponent("Order: " + p.name) + '">Email to order</a>' : "")
+      : '<span class="tag">Out of stock</span>';
     $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button>' + carousel(p) +
       '<div class="pad"><h2>' + esc(p.name) + '</h2><div>' + priceHtml(p) + '</div>' +
       (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : "") + order + '</div>';
     initCarousels($("panel"));
     $("close").addEventListener("click", closeSheet);
-    if ($("addcart")) $("addcart").addEventListener("click", () => { add(p.id); closeSheet(); });
-    showSheet();
+    $("sheet").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
   }
-  function showSheet() { $("sheet").classList.remove("hidden"); document.body.style.overflow = "hidden"; }
-
-  // ---- Cart (kept in this browser only) ----
-  const CART_KEY = "kivo-cart-" + slug;
-  let cart = {}, tt;
-  try { cart = JSON.parse(localStorage.getItem(CART_KEY) || "{}") || {}; } catch (e) { cart = {}; }
-  const saveCart = () => { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {} paintBar(); };
-  const lines = () => Object.keys(cart).map((id) => ({ p: products.find((x) => x.id === id), q: cart[id] })).filter((l) => l.p && l.p.in_stock);
-  const cartTotal = () => lines().reduce((t, l) => t + l.p.price_ngn * l.q, 0);
-  function toast(m) { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 2500); }
-  function paintBar() {
-    const n = lines().reduce((t, l) => t + l.q, 0);
-    $("cartbar").classList.toggle("hidden", !n);
-    $("opencart").textContent = "View cart (" + n + ") · " + money(cartTotal());
-  }
-  function add(id) { cart[id] = Math.min(20, (cart[id] || 0) + 1); saveCart(); toast("Added to cart"); }
-
-  function openCart() {
-    const ls = lines();
-    if (!ls.length) {
-      $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2><p class="msg">Your cart is empty.</p></div>';
-    } else {
-      $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2>' +
-        ls.map((l) => '<div class="row2"><div style="flex:1"><b>' + esc(l.p.name) + '</b><div class="msg" style="margin:2px 0 0">' + money(l.p.price_ngn) + '</div></div><div class="qty"><button data-m="' + l.p.id + '" type="button" aria-label="Less">−</button><span>' + l.q + '</span><button data-a="' + l.p.id + '" type="button" aria-label="More">+</button></div></div>').join("") +
-        '<p class="price" style="margin:14px 0 4px">Total: ' + money(cartTotal()) + '</p>' +
-        '<input class="f" id="cn" type="text" placeholder="Your name" maxlength="100" autocomplete="name">' +
-        '<input class="f" id="cp" type="tel" placeholder="Phone number" maxlength="30" autocomplete="tel">' +
-        '<input class="f" id="ca" type="text" placeholder="Delivery address" maxlength="300" autocomplete="street-address">' +
-        '<input class="f" id="cc" type="text" placeholder="City" maxlength="80" autocomplete="address-level2">' +
-        '<textarea class="f" id="cnote" placeholder="Note to the seller (optional)" maxlength="500"></textarea>' +
-        '<button class="btn" id="place" type="button">Order on WhatsApp</button>' +
-        '<p class="msg">Your order is saved with the seller, then WhatsApp opens so you can send it and arrange payment directly.</p></div>';
-      $("panel").querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.a] = Math.min(20, cart[b.dataset.a] + 1); saveCart(); openCart(); }));
-      $("panel").querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.m] -= 1; if (cart[b.dataset.m] < 1) delete cart[b.dataset.m]; saveCart(); openCart(); }));
-      $("place").addEventListener("click", place);
-    }
-    $("close").addEventListener("click", closeSheet);
-    showSheet();
-  }
-
-  async function place() {
-    const btn = $("place");
-    btn.disabled = true; btn.textContent = "Placing your order…";
-    try {
-      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
-      const res = await fetch("/api/orders", {
-        method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, items: lines().map((l) => ({ product_id: l.p.id, quantity: l.q })),
-          customer: { name: $("cn").value, phone: $("cp").value, address: $("ca").value, city: $("cc").value, note: $("cnote").value } })
-      });
-      clearTimeout(timer);
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || "We could not place your order.");
-      cart = {}; saveCart();
-      $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Order placed ✓</h2>' +
-        '<p>Your order number is <b>' + esc(data.order_number) + '</b> (' + money(data.total_ngn) + ').</p>' +
-        (data.whatsapp_url ? '<a class="btn" href="' + esc(data.whatsapp_url) + '" target="_blank" rel="noopener">Send order on WhatsApp</a><p class="msg">Tap the button, then press send in WhatsApp to confirm your order with the seller.</p>'
-          : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>') + '</div>';
-      $("close").addEventListener("click", closeSheet);
-    } catch (e) {
-      toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
-      btn.disabled = false; btn.textContent = "Order on WhatsApp";
-    }
-  }
-  $("opencart").addEventListener("click", openCart);
   function closeSheet() { $("sheet").classList.add("hidden"); document.body.style.overflow = ""; }
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
@@ -223,7 +150,6 @@ textarea.f{min-height:60px;resize:vertical}
     store = data.store; contact = data.contact || {}; products = data.products || [];
     document.title = store.name + " | Kivo";
     render();
-    paintBar();
   } catch (e) {
     fail("Couldn't load this store", "Check your connection and refresh the page.");
   }
