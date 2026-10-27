@@ -43,6 +43,13 @@ module.exports = async function handler(req, res) {
     if (storeError) throw storeError;
     if (!store || store.owner_id !== auth.user.id) return fail(res, 403, "You cannot manage this order.");
 
+    // Bank transfers and online links are prepaid: the seller must verify
+    // the money first, then approve the order.
+    const prepaid = ["bank_transfer", "online"].includes(order.payment_method);
+    if ((action === "confirm" || action === "ship") && prepaid && order.payment_status !== "paid") {
+      return fail(res, 409, "Verify the payment and tap Mark as paid first.");
+    }
+
     if (action === "mark_paid") {
       if (order.order_status === "cancelled" || order.order_status === "refunded") {
         return fail(res, 409, "This order can no longer be marked as paid.");
