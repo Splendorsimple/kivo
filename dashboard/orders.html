@@ -104,7 +104,8 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
 
   function detail(o) {
     const a = o.shipping_address || {}, c = o.customers || {}, phone = a.phone || c.phone || "";
-    const n = NEXT[o.order_status], canPay = (o.payment_status === "unpaid" || o.payment_status === "pending") && !["cancelled", "refunded"].includes(o.order_status);
+    const prepaid = ["bank_transfer", "online"].includes(o.payment_method), needPay = prepaid && o.payment_status !== "paid";
+    const n = needPay ? null : NEXT[o.order_status], canPay = (o.payment_status === "unpaid" || o.payment_status === "pending") && !["cancelled", "refunded"].includes(o.order_status);
     const canCancel = ["pending", "confirmed", "processing"].includes(o.order_status);
     return '<div class="det"><h3>Items</h3>' +
       (o.order_items || []).map((i) => '<div class="item"><span>' + esc(i.quantity) + ' × ' + esc(i.product_name) + '</span><span>' + money(i.line_total_ngn) + '</span></div>').join("") +
@@ -114,9 +115,11 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       '<p>' + esc([a.address, a.city].filter(Boolean).join(", ")) + '</p>' +
       (o.customer_note ? '<h3>Note</h3><p>' + esc(o.customer_note) + '</p>' : "") +
       '<h3>Payment</h3><p>' + esc(METHOD[o.payment_method] || "Not chosen") + '</p>' +
+      (needPay && canPay ? '<p class="mut">Check your bank app or payment account for ' + money(o.total_ngn) + ' with reference ' + esc(o.order_number) + '. Once it has arrived, tap Mark as paid. You can then confirm and ship the order.</p>' : "") +
       '<div class="acts">' +
+      (needPay && canPay ? '<button class="btn" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
       (n ? '<button class="btn" data-a="' + n[0] + '" data-id="' + o.id + '" type="button">' + n[1] + '</button>' : "") +
-      (canPay ? '<button class="btn alt" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
+      (canPay && !needPay ? '<button class="btn alt" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
       (canCancel ? '<button class="btn bad" data-a="cancel" data-id="' + o.id + '" type="button">Cancel order</button>' : "") +
       '</div></div>';
   }
