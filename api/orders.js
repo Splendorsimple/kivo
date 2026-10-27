@@ -180,12 +180,13 @@ module.exports = async function handler(req, res) {
 
     if (wa) {
       const message =
-        "Hi " + store.name + ", I just placed order " + order.order_number + ":\n" +
+        "Hi " + store.name + (["bank_transfer", "online"].includes(method.type) ? ", I have paid for order " : ", I just placed order ") + order.order_number + ":\n" +
         lines.map((l) => "- " + l.qty + " x " + l.p.name + " (" + money(l.lineTotal) + ")").join("\n") +
         "\nTotal: " + money(subtotal) + "\nPayment: " + method.label +
         "\nName: " + name + "\nPhone: " + phone +
         "\nAddress: " + address + ", " + city +
-        (note ? "\nNote: " + note : "");
+        (note ? "\nNote: " + note : "") +
+        (["bank_transfer", "online"].includes(method.type) ? "\nI will attach my payment receipt here." : "");
       whatsappUrl = "https://wa.me/" + wa + "?text=" + encodeURIComponent(message);
     }
 
@@ -210,4 +211,4 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
-                                 
+  
