@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>Orders | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,a{font:inherit}
+.hidden{display:none!important}
+.bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar a{color:var(--p);text-decoration:none;font-weight:500}
+.bar h1{font-size:18px;margin:0;flex:1}
+.tabs{display:flex;gap:8px;max-width:720px;margin:14px auto 0;padding:0 20px;overflow-x:auto}
+.tabs button{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:99px;cursor:pointer;font-weight:500;white-space:nowrap}
+.tabs .on{background:var(--pl);color:var(--p);border-color:var(--p)}
+main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.empty{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;color:var(--mut)}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.top{padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.num{font-weight:700}
+.mut{color:var(--mut);font-size:13px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--pl);color:var(--p)}
+.pill.ok{background:#e6f7ec;color:#17803d}
+.pill.warn{background:#fff3df;color:#a65f00}
+.pill.bad{background:#fdecef;color:#b4233c}
+.det{padding:0 16px 16px;border-top:1px solid var(--line)}
+.det h3{font-size:13px;margin:14px 0 4px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.det p{margin:2px 0;word-break:break-word}
+.det a{color:var(--p);text-decoration:none;font-weight:500}
+.item{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btn{border:0;background:var(--p);color:#fff;padding:11px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--pl);color:var(--p)}
+.btn.bad{background:#fdecef;color:#b4233c}
+.btn:disabled{opacity:.6}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<header class="bar"><a href="/dashboard/">&larr; Overview</a><h1>Orders</h1></header>
+<nav class="tabs" id="tabs">
+  <button data-t="new" class="on" type="button">New</button>
+  <button data-t="progress" type="button">In progress</button>
+  <button data-t="done" type="button">Completed</button>
+  <button data-t="cancelled" type="button">Cancelled</button>
+</nav>
+<main id="main"><p class="empty">Loading orders&hellip;</p></main>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(async function () {
+  "use strict";
+  const C = supabase.createClient(
+    "https://uhgnuuuvjkzfipynnhzk.supabase.co",
+    "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy",
+    { auth: { flowType: "pkce", storageKey: "kivo-auth", storage: window.localStorage, persistSession: true, autoRefreshToken: true } }
+  );
+  const $ = (id) => document.getElementById(id);
+  const TABS = { new: ["pending"], progress: ["confirmed", "processing", "shipped"], done: ["delivered", "refunded"], cancelled: ["cancelled"] };
+  const STATUS = { pending: "New", confirmed: "Confirmed", processing: "Processing", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
+  const PAY = { unpaid: "Unpaid", pending: "Payment pending", paid: "Paid", failed: "Payment failed", refunded: "Refunded", partially_refunded: "Part refunded" };
+  const METHOD = { bank_transfer: "Bank transfer", cash_on_delivery: "Pay on delivery", online: "Online payment link", whatsapp: "WhatsApp", other: "Other" };
+  const NEXT = { pending: ["confirm", "Confirm order"], confirmed: ["process", "Start processing"], processing: ["ship", "Mark as shipped"], shipped: ["deliver", "Mark as delivered"] };
+  let store = null, orders = [], tab = "new", open = null, tt, session;
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const when = (d) => new Date(d).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 3500); };
+  const waNumber = (p) => { let n = String(p || "").replace(/\D/g, ""); if (/^0\d{10}$/.test(n)) n = "234" + n.slice(1); return n; };
+
+  const got = await C.auth.getSession();
+  session = got.data.session;
+  if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function load() {
+    if (!store) {
+      const s = await C.from("stores").select("id").eq("owner_id", session.user.id).order("created_at").limit(1);
+      if (s.error) throw s.error;
+      store = s.data[0] || null;
+    }
+    if (!store) { $("main").innerHTML = '<p class="empty">Create your store first, then orders will appear here.</p>'; return; }
+    const r = await C.from("orders")
+      .select("id,order_number,order_status,payment_status,payment_method,total_ngn,created_at,shipping_address,customer_note,customers(full_name,phone),order_items(product_name,quantity,line_total_ngn)")
+      .eq("store_id", store.id).order("created_at", { ascending: false }).limit(100);
+    if (r.error) throw r.error;
+    orders = r.data;
+    render();
+  }
+
+  function pills(o) {
+    const sc = o.order_status === "delivered" ? "ok" : o.order_status === "cancelled" || o.order_status === "refunded" ? "bad" : "";
+    const pc = o.payment_status === "paid" ? "ok" : o.payment_status === "failed" ? "bad" : "warn";
+    return '<div class="pills"><span class="pill ' + sc + '">' + esc(STATUS[o.order_status] || o.order_status) + '</span><span class="pill ' + pc + '">' + esc(PAY[o.payment_status] || o.payment_status) + '</span></div>';
+  }
+
+  function detail(o) {
+    const a = o.shipping_address || {}, c = o.customers || {}, phone = a.phone || c.phone || "";
+    const n = NEXT[o.order_status], canPay = (o.payment_status === "unpaid" || o.payment_status === "pending") && !["cancelled", "refunded"].includes(o.order_status);
+    const canCancel = ["pending", "confirmed", "processing"].includes(o.order_status);
+    return '<div class="det"><h3>Items</h3>' +
+      (o.order_items || []).map((i) => '<div class="item"><span>' + esc(i.quantity) + ' × ' + esc(i.product_name) + '</span><span>' + money(i.line_total_ngn) + '</span></div>').join("") +
+      '<div class="item"><b>Total</b><b>' + money(o.total_ngn) + '</b></div>' +
+      '<h3>Customer</h3><p>' + esc(a.name || c.full_name || "") + '</p>' +
+      (phone ? '<p><a href="tel:' + esc(phone.replace(/[^\d+]/g, "")) + '">' + esc(phone) + '</a> · <a href="https://wa.me/' + waNumber(phone) + '" target="_blank" rel="noopener">WhatsApp</a></p>' : "") +
+      '<p>' + esc([a.address, a.city].filter(Boolean).join(", ")) + '</p>' +
+      (o.customer_note ? '<h3>Note</h3><p>' + esc(o.customer_note) + '</p>' : "") +
+      '<h3>Payment</h3><p>' + esc(METHOD[o.payment_method] || "Not chosen") + '</p>' +
+      '<div class="acts">' +
+      (n ? '<button class="btn" data-a="' + n[0] + '" data-id="' + o.id + '" type="button">' + n[1] + '</button>' : "") +
+      (canPay ? '<button class="btn alt" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
+      (canCancel ? '<button class="btn bad" data-a="cancel" data-id="' + o.id + '" type="button">Cancel order</button>' : "") +
+      '</div></div>';
+  }
+
+  function render() {
+    const list = orders.filter((o) => TABS[tab].includes(o.order_status));
+    if (!list.length) { $("main").innerHTML = '<p class="empty">No orders here yet.</p>'; return; }
+    $("main").innerHTML = list.map((o) => {
+      const c = o.customers || {}, a = o.shipping_address || {};
+      return '<div class="card"><div class="top" data-o="' + o.id + '"><div class="row"><span class="num">' + esc(o.order_number) + '</span><b>' + money(o.total_ngn) + '</b></div>' +
+        '<div class="mut">' + esc(a.name || c.full_name || "Customer") + ' · ' + esc(when(o.created_at)) + '</div>' + pills(o) + '</div>' +
+        (open === o.id ? detail(o) : "") + '</div>';
+    }).join("");
+    $("main").querySelectorAll("[data-o]").forEach((el) => el.addEventListener("click", () => { open = open === el.dataset.o ? null : el.dataset.o; render(); }));
+    $("main").querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => act(b)));
+  }
+
+  async function act(btn) {
+    const action = btn.dataset.a;
+    if (action === "cancel" && !confirm("Cancel this order? Reserved stock will be released.")) return;
+    if (action === "mark_paid" && !confirm("Confirm that you have received this payment?")) return;
+    btn.disabled = true;
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+      const res = await fetch("/api/order-action", {
+        method: "POST", signal: ctl.signal,
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await C.auth.getSession()).data.session.access_token },
+        body: JSON.stringify({ order_id: btn.dataset.id, action })
+      });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "That did not work.");
+      await load(); toast("Order updated.");
+    } catch (e) { toast(e.name === "AbortError" ? "That took too long. Try again." : e.message); btn.disabled = false; }
+  }
+
+  $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    tab = b.dataset.t; open = null;
+    $("tabs").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    render();
+  }));
+
+  try { await load(); }
+  catch (e) { $("main").innerHTML = '<p class="empty">Could not load orders. ' + esc(e.message) + '</p>'; }
+})();
+</script>
+</body>
+</html>
