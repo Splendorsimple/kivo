@@ -172,19 +172,26 @@ textarea.f{min-height:60px;resize:vertical}
 
   function confirmation(data) {
     const pay = data.payment || {}, d = pay.details || {}, ref = esc(data.order_number);
+    const prepaid = pay.type === "bank_transfer" || pay.type === "online";
+    const step1 = '<p class="msg" style="margin:14px 0 0"><b>Step 1: Make your payment</b></p>';
     let how = "";
     if (pay.type === "bank_transfer" && d.account_number) {
-      how = '<div class="box2"><b>Transfer ' + money(data.total_ngn) + ' to:</b><br>' + esc(d.bank_name) + '<br><b>' + esc(d.account_number) + '</b><br>' + esc(d.account_name) + '<br><span class="msg">Use ' + ref + ' as the payment reference.</span></div>';
+      how = step1 + '<div class="box2"><b>Transfer ' + money(data.total_ngn) + ' to:</b><br>' + esc(d.bank_name) + '<br><b>' + esc(d.account_number) + '</b><br>' + esc(d.account_name) + '<br><span class="msg">Use ' + ref + ' as the payment reference.</span></div>';
     } else if (pay.type === "online" && d.url && String(d.url).startsWith("https://")) {
-      how = '<a class="btn pur" href="' + esc(d.url) + '" target="_blank" rel="noopener">Pay ' + money(data.total_ngn) + ' now</a><p class="msg">Use ' + ref + ' as the payment note.</p>';
+      how = step1 + '<a class="btn pur" href="' + esc(d.url) + '" target="_blank" rel="noopener">Pay ' + money(data.total_ngn) + ' now</a><p class="msg">Use ' + ref + ' as the payment note.</p>';
     } else if (pay.type === "cash_on_delivery") {
       how = '<div class="box2">Pay in cash when your order is delivered.</div>';
     }
-    const wa = data.whatsapp_url ? '<a class="btn" href="' + esc(data.whatsapp_url) + '" target="_blank" rel="noopener">' + (pay.type === "whatsapp" ? "Send order on WhatsApp" : "Message the seller on WhatsApp") + '</a>' : "";
+    const label = prepaid ? "I've paid, send details on WhatsApp" : pay.type === "whatsapp" ? "Send order on WhatsApp" : "Message the seller on WhatsApp";
+    const wa = data.whatsapp_url
+      ? (prepaid ? '<p class="msg" style="margin:16px 0 0"><b>Step 2: Send your details to the seller</b></p><p class="msg">After paying, tap below to send your order details on WhatsApp, then attach your payment receipt.</p>' : "") +
+        '<a class="btn" href="' + esc(data.whatsapp_url) + '" target="_blank" rel="noopener">' + label + '</a>'
+      : "";
+    const tail = prepaid ? '<p class="msg">The seller will check your payment, then confirm and ship your order.</p>'
+      : pay.type === "whatsapp" ? '<p class="msg">Tap the button, then press send in WhatsApp to confirm your order and arrange payment.</p>'
+      : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>';
     return '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Order placed ✓</h2>' +
-      '<p>Your order number is <b>' + ref + '</b> (' + money(data.total_ngn) + ').</p>' + how + wa +
-      (pay.type === "whatsapp" ? '<p class="msg">Tap the button, then press send in WhatsApp to confirm your order and arrange payment.</p>'
-        : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>') + '</div>';
+      '<p>Your order number is <b>' + ref + '</b> (' + money(data.total_ngn) + ').</p>' + how + wa + tail + '</div>';
   }
 
   function openCart() {
