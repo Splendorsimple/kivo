@@ -1,0 +1,176 @@
+const crypto = require("crypto");
+const { createClient } = require("@supabase/supabase-js");
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+const fail = (res, status, error) => res.status(status).json({ success: false, error });
+
+module.exports = async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (req.method !== "POST") return fail(res, 405, "Method not allowed.");
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) return fail(res, 500, "Server configuration is incomplete.");
+
+  let body = req.body;
+  try {
+    if (typeof body === "string") body = JSON.parse(body);
+  } catch (e) {
+    return fail(res, 400, "Invalid request.");
+  }
+  body = body && typeof body === "object" ? body : {};
+
+  // ---- Validate input (nothing from the browser is trusted for prices) ----
+  const slug = typeof body.slug === "string" ? body.slug.trim().toLowerCase() : "";
+  if (!/^[a-z0-9-]{1,60}$/.test(slug)) return fail(res, 400, "Invalid store.");
+
+  const wanted = new Map();
+  const rawItems = Array.isArray(body.items) ? body.items.slice(0, 30) : [];
+  for (const item of rawItems) {
+    const id = item && item.product_id;
+    const qty = item && Number(item.quantity);
+    if (typeof id !== "string" || !UUID.test(id) || !Number.isInteger(qty) || qty < 1 || qty > 20) {
+      return fail(res, 400, "Your cart has an invalid item.");
+    }
+    wanted.set(id, Math.min(20, (wanted.get(id) || 0) + qty));
+  }
+  if (!wanted.size) return fail(res, 400, "Your cart is empty.");
+
+  const c = body.customer && typeof body.customer === "object" ? body.customer : {};
+  const text = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  const name = text(c.name, 100);
+  const phone = text(c.phone, 30).replace(/[\s()-]/g, "");
+  const address = text(c.address, 300);
+  const city = text(c.city, 80);
+  const note = text(c.note, 500);
+
+  if (name.length < 2) return fail(res, 400, "Please enter your name.");
+  if (!/^\+?\d{8,15}$/.test(phone)) return fail(res, 400, "Please enter a valid phone number.");
+  if (address.length < 5) return fail(res, 400, "Please enter your delivery address.");
+  if (city.length < 2) return fail(res, 400, "Please enter your city.");
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  let customerId = null;
+  let orderId = null;
+
+  try {
+    const { data: store, error: storeError } = await supabase
+      .from("stores").select("id, name").eq("slug", slug).eq("status", "published").maybeSingle();
+    if (storeError) throw storeError;
+    if (!store) return fail(res, 404, "This store is not open right now.");
+
+    // Prices and availability always come from the database.
+    const ids = Array.from(wanted.keys());
+    const { data: products, error: productError } = await supabase
+      .from("products").select("id, name, price_ngn, track_inventory")
+      .eq("store_id", store.id).eq("status", "published").in("id", ids);
+    if (productError) throw productError;
+    if (!products || products.length !== ids.length) {
+      return fail(res, 409, "Some items in your cart are no longer available.");
+    }
+
+    const { data: stock, error: stockError } = await supabase
+      .from("inventory").select("product_id, quantity, variant_id").in("product_id", ids);
+    if (stockError) throw stockError;
+
+    const lines = [];
+    let subtotal = 0;
+    for (const p of products) {
+      const qty = wanted.get(p.id);
+      const row = (stock || []).find((r) => r.product_id === p.id && !r.variant_id);
+      if (p.track_inventory && row && row.quantity < qty) {
+        return fail(res, 409, p.name + " only has " + row.quantity + " left in stock.");
+      }
+      const lineTotal = Number(p.price_ngn) * qty;
+      subtotal += lineTotal;
+      lines.push({ p, qty, lineTotal });
+    }
+
+    const { data: customer, error: customerError } = await supabase
+      .from("customers").insert({ store_id: store.id, full_name: name, phone }).select("id").single();
+    if (customerError) throw customerError;
+    customerId = customer.id;
+
+    let order = null;
+    for (let attempt = 0; attempt < 5 && !order; attempt++) {
+      const orderNumber = "KIV-" + crypto.randomBytes(4).toString("hex").toUpperCase().slice(0, 6);
+      const { data, error } = await supabase.from("orders").insert({
+        store_id: store.id,
+        customer_id: customerId,
+        order_number: orderNumber,
+        source: "whatsapp",
+        order_status: "pending",
+        payment_status: "unpaid",
+        subtotal_ngn: subtotal,
+        shipping_ngn: 0,
+        discount_ngn: 0,
+        tax_ngn: 0,
+        total_ngn: subtotal,
+        shipping_address: { name, phone, address, city },
+        customer_note: note || null
+      }).select("id, order_number").single();
+
+      if (error && error.code !== "23505") throw error;
+      if (!error) order = data;
+    }
+    if (!order) throw new Error("Could not create an order number.");
+    orderId = order.id;
+
+    const { error: itemsError } = await supabase.from("order_items").insert(
+      lines.map((l) => ({
+        order_id: orderId,
+        store_id: store.id,
+        product_id: l.p.id,
+        product_name: l.p.name,
+        unit_price_ngn: Number(l.p.price_ngn),
+        quantity: l.qty,
+        discount_ngn: 0,
+        line_total_ngn: l.lineTotal
+      }))
+    );
+    if (itemsError) throw itemsError;
+
+    // The seller's WhatsApp number is read here, never sent by the browser.
+    let whatsappUrl = null;
+    const { data: settingsRow } = await supabase
+      .from("store_settings").select("settings").eq("store_id", store.id).maybeSingle();
+    const wa = settingsRow && settingsRow.settings && settingsRow.settings.contact
+      ? String(settingsRow.settings.contact.whatsapp || "").replace(/\D/g, "") : "";
+
+    if (wa) {
+      const message =
+        "Hi " + store.name + ", I just placed order " + order.order_number + ":\n" +
+        lines.map((l) => "- " + l.qty + " x " + l.p.name + " (" + money(l.lineTotal) + ")").join("\n") +
+        "\nTotal: " + money(subtotal) +
+        "\nName: " + name + "\nPhone: " + phone +
+        "\nAddress: " + address + ", " + city +
+        (note ? "\nNote: " + note : "");
+      whatsappUrl = "https://wa.me/" + wa + "?text=" + encodeURIComponent(message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      order_number: order.order_number,
+      total_ngn: subtotal,
+      whatsapp_url: whatsappUrl
+    });
+  } catch (error) {
+    console.error("Order creation failed:", error);
+    try {
+      if (orderId) {
+        await supabase.from("order_items").delete().eq("order_id", orderId);
+        await supabase.from("orders").delete().eq("id", orderId);
+      }
+      if (customerId) await supabase.from("customers").delete().eq("id", customerId);
+    } catch (cleanupError) {
+      console.error("Order cleanup failed:", cleanupError);
+    }
+    return fail(res, 500, "We could not place your order. Please try again.");
+  }
+};
+  
