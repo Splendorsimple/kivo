@@ -73,6 +73,7 @@ module.exports = async function handler(req, res) {
 
   let customerId = null;
   let orderId = null;
+  const claimToken = crypto.randomBytes(16).toString("hex");
 
   try {
     const { data: store, error: storeError } = await supabase
@@ -144,6 +145,7 @@ module.exports = async function handler(req, res) {
         order_number: orderNumber,
         source: method.type === "whatsapp" ? "whatsapp" : "storefront",
         payment_method: method.type,
+        tracking_token_hash: crypto.createHash("sha256").update(claimToken).digest("hex"),
         order_status: "pending",
         payment_status: "unpaid",
         subtotal_ngn: subtotal,
@@ -193,6 +195,7 @@ module.exports = async function handler(req, res) {
     return res.status(201).json({
       success: true,
       order_number: order.order_number,
+      claim_token: claimToken,
       total_ngn: subtotal,
       payment: { type: method.type, label: method.label, details: paymentDetails(method) },
       whatsapp_url: whatsappUrl
@@ -211,4 +214,4 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
-  
+      
