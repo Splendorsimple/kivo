@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f8f7fc">
+<title>Track your order | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc;--ok:#17803d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px "DM Sans",sans-serif}
+.wrap{max-width:520px;margin:0 auto;padding:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:14px}
+h1{font-size:20px;margin:0}
+h2{font-size:16px;margin:0 0 4px}
+.mut{color:var(--mut);font-size:13px}
+.center{text-align:center;color:var(--mut);padding:60px 20px}
+.big{font-size:20px;font-weight:700;margin:6px 0 4px}
+.banner{border-radius:12px;padding:12px 14px;font-weight:500;background:#fdecef;color:#b4233c;margin-top:12px}
+.steps{list-style:none;margin:14px 0 0;padding:0}
+.steps li{display:flex;gap:12px;align-items:flex-start;padding-bottom:16px;position:relative;color:var(--mut)}
+.steps li:not(:last-child)::before{content:"";position:absolute;left:11px;top:24px;bottom:0;width:2px;background:var(--line)}
+.dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);background:#fff;flex:none;display:grid;place-items:center;font-size:12px;color:#fff}
+.steps li.done{color:var(--ink);font-weight:500}
+.steps li.done .dot{background:var(--ok);border-color:var(--ok)}
+.steps li.now .dot{border-color:var(--p);box-shadow:0 0 0 4px var(--pl)}
+.item{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
+.btn{display:block;text-align:center;border:0;border-radius:12px;padding:13px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;margin-top:12px;background:#25d366;color:#fff}
+.btn.alt{background:var(--pl);color:var(--p)}
+.foot{text-align:center;color:var(--mut);font-size:12px;padding:20px 0 8px}
+.foot a{color:var(--p);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><p class="center">Loading your order&hellip;</p></div>
+
+<script>
+(async function () {
+  "use strict";
+  const root = document.getElementById("root");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const when = (d) => new Date(d).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+  const slug = (location.pathname.split("/").filter(Boolean)[1] || "").toLowerCase();
+  const q = new URLSearchParams(location.search);
+  const HEAD = {
+    pending: ["Order received", "The seller has your order and will confirm it soon."],
+    confirmed: ["Order confirmed", "Your order has been confirmed by the seller."],
+    processing: ["Being prepared", "The seller is getting your order ready."],
+    shipped: ["On its way", "Your order has been shipped."],
+    delivered: ["Delivered", "Your order has been delivered. Thank you!"],
+    cancelled: ["Order cancelled", "This order was cancelled. Contact the seller if you have questions."],
+    refunded: ["Order refunded", "This order has been refunded."]
+  };
+
+  function show(title, text) { root.innerHTML = '<div class="center"><h2 style="color:#201b2d">' + esc(title) + '</h2><p>' + esc(text) + '</p></div>'; }
+
+  function render(d) {
+    const o = d.order, h = HEAD[o.order_status] || [o.order_status, ""];
+    const idx = ["pending", "confirmed", "processing", "shipped", "delivered"].indexOf(o.order_status);
+    const dead = o.order_status === "cancelled" || o.order_status === "refunded";
+    const paid = o.payment_status === "paid";
+    const steps = [
+      ["Order placed", true],
+      [o.payment_method === "cash_on_delivery" ? "Pay on delivery" : "Payment received", paid],
+      ["Confirmed", idx >= 1], ["Preparing", idx >= 2], ["Shipped", idx >= 3], ["Delivered", idx >= 4]
+    ];
+    const firstOpen = steps.findIndex((s) => !s[1]);
+    root.innerHTML = '<h1>' + esc(d.store.name) + '</h1><div class="mut">Order ' + esc(o.order_number) + ' · placed ' + esc(when(o.created_at)) + '</div>' +
+      '<div class="card"><div class="mut">Status</div><div class="big">' + esc(h[0]) + '</div><div class="mut">' + esc(h[1]) + '</div>' +
+      (dead ? '<div class="banner">' + esc(h[0]) + '</div>' :
+        '<ul class="steps">' + steps.map((s, i) => '<li class="' + (s[1] ? "done" : "") + (i === firstOpen ? " now" : "") + '"><span class="dot">' + (s[1] ? "✓" : "") + '</span>' + esc(s[0]) + '</li>').join("") + '</ul>') +
+      '<div class="mut">Last updated ' + esc(when(o.updated_at)) + '</div></div>' +
+      '<div class="card"><h2>Your items</h2>' + o.items.map((i) => '<div class="item"><span>' + esc(i.quantity) + ' × ' + esc(i.name) + '</span></div>').join("") +
+      '<div class="item" style="border-top:1px solid #ece9f2;margin-top:6px;padding-top:10px"><b>Total</b><b>' + money(o.total_ngn) + '</b></div></div>' +
+      (d.whatsapp ? '<a class="btn" href="https://wa.me/' + esc(d.whatsapp) + '?text=' + encodeURIComponent("Hi, I'm checking on my order " + o.order_number + ".") + '" target="_blank" rel="noopener">Message the seller on WhatsApp</a>' : "") +
+      '<button class="btn alt" id="refresh" type="button">Refresh status</button>' +
+      '<div class="foot">Powered by <a href="/">Kivo</a></div>';
+    document.getElementById("refresh").addEventListener("click", load);
+  }
+
+  async function load() {
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
+      const res = await fetch("/api/order-track?slug=" + encodeURIComponent(slug) + "&o=" + encodeURIComponent(q.get("o") || "") + "&k=" + encodeURIComponent(q.get("k") || ""), { signal: ctl.signal, headers: { Accept: "application/json" } });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (res.status === 404) return show("Order not found", "This tracking link is not valid. Check the link the seller sent you.");
+      if (!res.ok || !data.success) throw new Error();
+      render(data);
+    } catch (e) { show("Couldn't load your order", "Check your connection and try again."); }
+  }
+
+  if (!slug || !q.get("o") || !q.get("k")) return show("Order not found", "This tracking link is incomplete.");
+  await load();
+})();
+</script>
+</body>
+</html>
