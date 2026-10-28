@@ -40,6 +40,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
 .btn{border:0;background:var(--p);color:#fff;padding:11px 16px;border-radius:10px;font-weight:600;cursor:pointer}
 .btn.alt{background:var(--pl);color:var(--p)}
 .btn.bad{background:#fdecef;color:#b4233c}
+.btn.wa{background:#25d366;color:#fff;display:inline-block;text-decoration:none}
 .btn:disabled{opacity:.6}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:20;max-width:90%}
 </style>
@@ -69,7 +70,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
   const PAY = { unpaid: "Unpaid", pending: "Customer says paid", paid: "Paid", failed: "Payment failed", refunded: "Refunded", partially_refunded: "Part refunded" };
   const METHOD = { bank_transfer: "Bank transfer", cash_on_delivery: "Pay on delivery", online: "Online payment link", whatsapp: "WhatsApp", other: "Other" };
   const NEXT = { pending: ["confirm", "Confirm order"], confirmed: ["process", "Start processing"], processing: ["ship", "Mark as shipped"], shipped: ["deliver", "Mark as delivered"] };
-  let store = null, orders = [], tab = "new", open = null, tt, session;
+  let store = null, orders = [], links = {}, tab = "new", open = null, tt, session;
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
@@ -80,6 +81,35 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
   const got = await C.auth.getSession();
   session = got.data.session;
   if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function loadLinks() {
+    try {
+      const ids = orders.slice(0, 100).map((o) => o.id);
+      if (!ids.length) return;
+      const res = await fetch("/api/order-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await C.auth.getSession()).data.session.access_token },
+        body: JSON.stringify({ order_ids: ids })
+      });
+      const data = await res.json();
+      if (data.success) links = data.links || {};
+    } catch (e) {}
+  }
+
+  function updateText(o, link) {
+    const a = o.shipping_address || {}, first = String(a.name || "").trim().split(" ")[0] || "there";
+    const ref = o.order_number, paid = o.payment_status === "paid", s = o.order_status;
+    let t;
+    if (s === "cancelled") t = "your order " + ref + " has been cancelled.";
+    else if (s === "refunded") t = "your order " + ref + " has been refunded.";
+    else if (s === "delivered") t = "your order " + ref + " has been delivered. Thank you for shopping with us!";
+    else if (s === "shipped") t = "good news! Your order " + ref + " has been shipped and is on its way.";
+    else if (s === "processing") t = "we are now preparing your order " + ref + ".";
+    else if (s === "confirmed") t = "your order " + ref + " is confirmed" + (paid ? " and your payment has been received." : ".");
+    else t = paid ? "we have received your payment for order " + ref + ". We will confirm it shortly."
+      : "we have received your order " + ref + (o.payment_status === "pending" ? " and we are checking your payment." : ". We are waiting for your payment.");
+    return "Hi " + first + ", " + t + (link ? "\n\nTrack your order any time: " + link : "");
+  }
 
   async function load() {
     if (!store) {
@@ -93,6 +123,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       .eq("store_id", store.id).order("created_at", { ascending: false }).limit(100);
     if (r.error) throw r.error;
     orders = r.data;
+    await loadLinks();
     render();
   }
 
@@ -116,6 +147,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       (o.customer_note ? '<h3>Note</h3><p>' + esc(o.customer_note) + '</p>' : "") +
       '<h3>Payment</h3><p>' + esc(METHOD[o.payment_method] || "Not chosen") + '</p>' +
       (needPay && canPay ? '<p class="mut">' + (o.payment_status === "pending" ? "The customer says they have paid. " : "") + 'Check your bank app or payment account for ' + money(o.total_ngn) + ' with reference ' + esc(o.order_number) + '. Once it has arrived, tap Mark as paid. You can then confirm and ship the order.</p>' : "") +
+      (phone ? '<h3>Keep the customer updated</h3><a class="btn wa" href="https://wa.me/' + waNumber(phone) + '?text=' + encodeURIComponent(updateText(o, links[o.id])) + '" target="_blank" rel="noopener">Update customer on WhatsApp</a><p class="mut" style="margin-top:6px">Opens WhatsApp with a ready message for the current status. Just press send.</p>' : "") +
       '<div class="acts">' +
       (needPay && canPay ? '<button class="btn" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
       (n ? '<button class="btn" data-a="' + n[0] + '" data-id="' + o.id + '" type="button">' + n[1] + '</button>' : "") +
@@ -152,7 +184,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       clearTimeout(timer);
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "That did not work.");
-      await load(); toast("Order updated.");
+      await load(); toast("Order updated. Tap Update customer on WhatsApp to let them know.");
     } catch (e) { toast(e.name === "AbortError" ? "That took too long. Try again." : e.message); btn.disabled = false; }
   }
 
