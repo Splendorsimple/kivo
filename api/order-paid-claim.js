@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const { clientKey, allow, tooMany } = require("./_ratelimit");
 
 const fail = (res, status, error) => res.status(status).json({ success: false, error });
 const sha256 = (v) => crypto.createHash("sha256").update(v).digest("hex");
@@ -24,6 +25,7 @@ module.exports = async function handler(req, res) {
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  if (!(await allow(supabase, "claim:ip:" + clientKey(req), 20, 600))) return tooMany(res, 600);
 
   try {
     const { data: store, error: storeError } = await supabase.from("stores").select("id").eq("slug", slug).maybeSingle();
@@ -54,4 +56,3 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "Could not record that. Please tell the seller on WhatsApp.");
   }
 };
-      
