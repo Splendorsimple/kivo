@@ -208,6 +208,7 @@ textarea.f{min-height:60px;resize:vertical}
         '<input class="f" id="ca" type="text" placeholder="Delivery address" maxlength="300" autocomplete="street-address">' +
         '<input class="f" id="cc" type="text" placeholder="City" maxlength="80" autocomplete="address-level2">' +
         '<textarea class="f" id="cnote" placeholder="Note to the seller (optional)" maxlength="500"></textarea>' +
+        '<input id="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0">' +
         payOptions() +
         '<button class="btn" id="place" type="button">Place order</button>' +
         '<p class="msg">Your order is saved with the seller first. You will then see how to pay.</p></div>';
@@ -226,7 +227,7 @@ textarea.f{min-height:60px;resize:vertical}
       const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
       const res = await fetch("/api/orders", {
         method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, items: lines().map((l) => ({ product_id: l.p.id, quantity: l.q })),
+        body: JSON.stringify({ slug, website: $("hp").value, items: lines().map((l) => ({ product_id: l.p.id, quantity: l.q })),
           payment_method_id: (document.querySelector("input[name=pay]:checked") || {}).value || "", customer: { name: $("cn").value, phone: $("cp").value, address: $("ca").value, city: $("cc").value, note: $("cnote").value } })
       });
       clearTimeout(timer);
