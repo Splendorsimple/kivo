@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { trackKey, trackUrl, originOf } = require("./_track");
 const { createClient } = require("@supabase/supabase-js");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -177,6 +178,7 @@ module.exports = async function handler(req, res) {
     );
     if (itemsError) throw itemsError;
 
+    const trackLink = trackUrl(originOf(req), slug, order.order_number, trackKey(serviceRoleKey, order.id));
     let whatsappUrl = null;
     const wa = waNumber;
 
@@ -188,7 +190,8 @@ module.exports = async function handler(req, res) {
         "\nName: " + name + "\nPhone: " + phone +
         "\nAddress: " + address + ", " + city +
         (note ? "\nNote: " + note : "") +
-        (["bank_transfer", "online"].includes(method.type) ? "\nI will attach my payment receipt here." : "");
+        (["bank_transfer", "online"].includes(method.type) ? "\nI will attach my payment receipt here." : "") +
+        "\nTrack this order: " + trackLink;
       whatsappUrl = "https://wa.me/" + wa + "?text=" + encodeURIComponent(message);
     }
 
@@ -196,6 +199,7 @@ module.exports = async function handler(req, res) {
       success: true,
       order_number: order.order_number,
       claim_token: claimToken,
+      track_url: trackLink,
       total_ngn: subtotal,
       payment: { type: method.type, label: method.label, details: paymentDetails(method) },
       whatsapp_url: whatsappUrl
@@ -214,4 +218,4 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
-      
+        
