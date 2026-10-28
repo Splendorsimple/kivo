@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>Customers | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,input,a{font:inherit}
+.hidden{display:none!important}
+.bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar a{color:var(--p);text-decoration:none;font-weight:500}
+.bar h1{font-size:18px;margin:0;flex:1}
+main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.search{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.mut{color:var(--mut);font-size:13px}
+.empty{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;color:var(--mut)}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.top{padding:14px 16px;cursor:pointer;display:flex;gap:12px;align-items:center}
+.av{width:40px;height:40px;border-radius:50%;background:var(--pl);color:var(--p);display:grid;place-items:center;font-weight:700;flex:none}
+.who{flex:1;min-width:0}
+.who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tot{text-align:right;font-weight:700}
+.det{padding:0 16px 16px;border-top:1px solid var(--line)}
+.acts{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap}
+.btn{border:0;background:var(--pl);color:var(--p);padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn.wa{background:#25d366;color:#fff}
+.ord{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.ord:last-child{border-bottom:0}
+.pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--pl);color:var(--p);margin-left:6px}
+.pill.bad{background:#fdecef;color:#b4233c}
+.pill.ok{background:#e6f7ec;color:#17803d}
+h3{font-size:12px;margin:14px 0 4px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<header class="bar"><a href="/dashboard/">&larr; Overview</a><h1>Customers</h1></header>
+<main>
+  <input id="q" class="search hidden" type="search" placeholder="Search by name or phone" autocomplete="off">
+  <div id="count" class="mut"></div>
+  <div id="list"><p class="empty">Loading customers&hellip;</p></div>
+</main>
+
+<script>
+(async function () {
+  "use strict";
+  const C = supabase.createClient(
+    "https://uhgnuuuvjkzfipynnhzk.supabase.co",
+    "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy",
+    { auth: { flowType: "pkce", storageKey: "kivo-auth", storage: window.localStorage, persistSession: true, autoRefreshToken: true } }
+  );
+  const $ = (id) => document.getElementById(id);
+  const STATUS = { pending: "New", confirmed: "Confirmed", processing: "Processing", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
+  let people = [], open = null;
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const day = (d) => new Date(d).toLocaleDateString("en-NG", { dateStyle: "medium" });
+  // Same person, however the number was typed: 0803..., +234803..., 234803...
+  const key = (p) => { let n = String(p || "").replace(/\D/g, ""); if (/^0\d{10}$/.test(n)) n = "234" + n.slice(1); return n; };
+
+  const { data: { session } } = await C.auth.getSession();
+  if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function load() {
+    const s = await C.from("stores").select("id").eq("owner_id", session.user.id).order("created_at").limit(1);
+    if (s.error) throw s.error;
+    if (!s.data[0]) { $("list").innerHTML = '<p class="empty">Create your store first. Customers appear here once they order.</p>'; return; }
+
+    const r = await C.from("orders")
+      .select("order_number,order_status,total_ngn,created_at,shipping_address,customers(full_name,phone)")
+      .eq("store_id", s.data[0].id).order("created_at", { ascending: false }).limit(1000);
+    if (r.error) throw r.error;
+
+    // Build one entry per phone number, newest order first.
+    const map = new Map();
+    for (const o of r.data) {
+      const a = o.shipping_address || {}, c = o.customers || {};
+      const phone = a.phone || c.phone || "", k = key(phone) || "order-" + o.order_number;
+      if (!map.has(k)) map.set(k, { k, name: a.name || c.full_name || "Customer", phone, orders: [], count: 0, total: 0, last: o.created_at });
+      const p = map.get(k), live = o.order_status !== "cancelled" && o.order_status !== "refunded";
+      p.orders.push(o);
+      if (live) { p.count += 1; p.total += Number(o.total_ngn); }
+    }
+    people = Array.from(map.values());
+    $("q").classList.toggle("hidden", !people.length);
+    render();
+  }
+
+  function render() {
+    const term = $("q").value.trim().toLowerCase(), digits = term.replace(/\D/g, "");
+    const list = people.filter((p) => !term || p.name.toLowerCase().includes(term) || (digits && key(p.phone).includes(digits)));
+    $("count").textContent = people.length ? list.length + (list.length === 1 ? " customer" : " customers") : "";
+    if (!list.length) { $("list").innerHTML = '<p class="empty">' + (people.length ? "No customers match your search." : "No customers yet. They will appear here after their first order.") + '</p>'; return; }
+    $("list").innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' + list.map((p) =>
+      '<div class="card"><div class="top" data-k="' + esc(p.k) + '"><div class="av">' + esc(p.name.trim().charAt(0).toUpperCase() || "?") + '</div>' +
+      '<div class="who"><b>' + esc(p.name) + '</b><span class="mut">' + esc(p.phone || "No phone") + '</span></div>' +
+      '<div class="tot">' + money(p.total) + '<div class="mut" style="font-weight:400">' + p.count + (p.count === 1 ? " order" : " orders") + '</div></div></div>' +
+      (open === p.k ? detail(p) : "") + '</div>').join("") + '</div>';
+    $("list").querySelectorAll("[data-k]").forEach((el) => el.addEventListener("click", () => { open = open === el.dataset.k ? null : el.dataset.k; render(); }));
+  }
+
+  function detail(p) {
+    const wa = key(p.phone);
+    return '<div class="det"><div class="mut" style="margin-top:12px">Last order ' + esc(day(p.last)) + '</div>' +
+      (wa ? '<div class="acts"><a class="btn wa" href="https://wa.me/' + wa + '" target="_blank" rel="noopener">WhatsApp</a><a class="btn" href="tel:' + esc(p.phone.replace(/[^\d+]/g, "")) + '">Call</a></div>' : "") +
+      '<h3>Orders</h3>' + p.orders.map((o) => {
+        const bad = o.order_status === "cancelled" || o.order_status === "refunded", ok = o.order_status === "delivered";
+        return '<div class="ord"><span><b>' + esc(o.order_number) + '</b><span class="pill ' + (bad ? "bad" : ok ? "ok" : "") + '">' + esc(STATUS[o.order_status] || o.order_status) + '</span><div class="mut">' + esc(day(o.created_at)) + '</div></span><span>' + money(o.total_ngn) + '</span></div>';
+      }).join("") +
+      '<p class="mut" style="margin:10px 0 0">Manage these on the <a href="/dashboard/orders.html" style="color:#6d28d9">Orders page</a>.</p></div>';
+  }
+
+  $("q").addEventListener("input", render);
+  try { await load(); }
+  catch (e) { $("list").innerHTML = '<p class="empty">Could not load customers. ' + esc(e.message) + '</p>'; }
+})();
+</script>
+</body>
+</html>
