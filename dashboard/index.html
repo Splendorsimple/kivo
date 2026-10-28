@@ -297,6 +297,20 @@
       .topbar h1 { font-size: 18px; }
       .profile-email { max-width: 150px; }
     }
+      .soon {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: #f1eaff;
+      color: #6d28d9;
+    }
+
+    .panel button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
   </style></head><body>
   <div id="auth-loading" class="loading-screen">
     <div class="loading-card">
@@ -329,11 +343,10 @@
       <span class="nav-icon">◇</span> My store
     </a>
     <a href="#" data-action="settings">
-      <span class="nav-icon">⚙</span> Settings
+      <span class="nav-icon">⚙</span> Settings <span class="soon">Soon</span>
     </a>
   </nav>
-
-  <div class="sidebar-bottom">
+        <div class="sidebar-bottom">
     <div class="help-card">
       <strong>Need a hand?</strong>
       <p>Get help setting up your Kivo workspace.</p>
@@ -403,7 +416,7 @@
         <div class="panel-icon">⚙</div>
         <h3>Settings</h3>
         <p>Manage your workspace preferences.</p>
-        <button type="button" data-action="settings">Open settings</button>
+        <button type="button" data-action="settings" disabled>Coming soon</button>
       </article>
 
       <article class="panel">
@@ -584,8 +597,7 @@
           });
 
           const result = await response.json();
-
-          if (!response.ok || !result.success) {
+                  if (!response.ok || !result.success) {
             clearPendingSubscription();
             cleanDashboardUrl();
 
