@@ -191,7 +191,8 @@ textarea.f{min-height:60px;resize:vertical}
       : pay.type === "whatsapp" ? '<p class="msg">Tap the button, then press send in WhatsApp to confirm your order and arrange payment.</p>'
       : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>';
     return '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Order placed ✓</h2>' +
-      '<p>Your order number is <b>' + ref + '</b> (' + money(data.total_ngn) + ').</p>' + how + wa + tail + '</div>';
+      '<p>Your order number is <b>' + ref + '</b> (' + money(data.total_ngn) + ').</p>' + how + wa + tail +
+      (data.track_url ? '<p class="msg" style="margin-top:14px">Follow your order any time: <a href="' + esc(data.track_url) + '" style="color:#6d28d9;font-weight:700">Track my order</a>. The seller will also keep you updated on WhatsApp.</p>' : "") + '</div>';
   }
 
   function openCart() {
