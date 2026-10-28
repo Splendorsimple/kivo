@@ -1,5 +1,6 @@
 
 const { createClient } = require("@supabase/supabase-js");
+const { clientKey, allow, tooMany } = require("./_ratelimit");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -44,6 +45,10 @@ module.exports = async function handler(req, res) {
         }
       }
     );
+
+    if (!(await allow(supabase, "storefront:ip:" + clientKey(req), 120, 60))) {
+      return tooMany(res, 60);
+    }
 
     const { data: store, error: storeError } = await supabase
       .from("stores")
@@ -217,3 +222,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+      
