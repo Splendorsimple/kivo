@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const { clientKey, allow, tooMany } = require("./_ratelimit");
 const { trackKey } = require("./_track");
 
 const fail = (res, status, error) => res.status(status).json({ success: false, error });
@@ -21,6 +22,7 @@ module.exports = async function handler(req, res) {
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  if (!(await allow(supabase, "track:ip:" + clientKey(req), 60, 600))) return tooMany(res, 600);
 
   try {
     const { data: store, error: storeError } = await supabase.from("stores").select("id, name").eq("slug", slug).maybeSingle();
