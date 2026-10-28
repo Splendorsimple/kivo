@@ -816,7 +816,7 @@
         document.querySelectorAll("[data-action]").forEach((el) => {
           el.addEventListener("click", (event) => {
             event.preventDefault();
-            const PAGES = { products: "/dashboard/products.html", orders: "/dashboard/orders.html", store: "/dashboard/store.html" };
+            const PAGES = { products: "/dashboard/products.html", orders: "/dashboard/orders.html", customers: "/dashboard/customers.html", store: "/dashboard/store.html" };
             if (PAGES[el.dataset.action]) {
               location.href = PAGES[el.dataset.action];
               return;
