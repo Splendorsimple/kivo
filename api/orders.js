@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { trackKey, trackUrl, originOf } = require("./_track");
+const { clientKey, allow, tooMany, hash } = require("./_ratelimit");
 const { createClient } = require("@supabase/supabase-js");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -33,6 +34,9 @@ module.exports = async function handler(req, res) {
     return fail(res, 400, "Invalid request.");
   }
   body = body && typeof body === "object" ? body : {};
+
+  // Hidden "website" field: real customers never see it, bots fill it in.
+  if (typeof body.website === "string" && body.website.trim()) return fail(res, 400, "Invalid request.");
 
   // ---- Validate input (nothing from the browser is trusted for prices) ----
   const slug = typeof body.slug === "string" ? body.slug.trim().toLowerCase() : "";
@@ -71,6 +75,10 @@ module.exports = async function handler(req, res) {
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
+
+  // Spam protection: per visitor, and per phone number for each store.
+  if (!(await allow(supabase, "orders:ip:" + clientKey(req), 5, 600))) return tooMany(res, 600);
+  if (!(await allow(supabase, "orders:phone:" + slug + ":" + hash(phone), 5, 3600))) return tooMany(res, 3600);
 
   let customerId = null;
   let orderId = null;
@@ -218,4 +226,4 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
-        
+    
