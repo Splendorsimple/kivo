@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select(
-        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order), inventory(quantity, variant_id)"
+        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order), inventory(quantity, reserved_quantity, variant_id)"
       )
       .eq("store_id", store.id)
       .eq("status", "published")
@@ -114,7 +114,7 @@ module.exports = async function handler(req, res) {
         compare_at_price_ngn: product.compare_at_price_ngn,
         images,
         in_stock:
-          !product.track_inventory || !stockRow || stockRow.quantity > 0
+          !product.track_inventory || !stockRow || stockRow.quantity - (stockRow.reserved_quantity || 0) > 0
       };
     });
 
