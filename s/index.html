@@ -40,6 +40,7 @@ textarea.f{min-height:60px;resize:vertical}
 .box2{background:var(--pl);border-radius:12px;padding:12px;margin:10px 0;line-height:1.6;word-break:break-word}
 .msg{color:var(--mut);font-size:13px;margin:8px 0 0}
 .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;z-index:20;max-width:90%}
+.tag.low{background:#fff3df;color:#a65f00}
 .tag{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fdecef;color:#b4233c}
 .car{position:relative;aspect-ratio:1;background:var(--pl)}
 .track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
@@ -128,7 +129,7 @@ textarea.f{min-height:60px;resize:vertical}
       (store.description ? '<p class="about">' + esc(store.description) + '</p>' : "") +
       (chips.length ? '<div class="chips">' + chips.join("") + '</div>' : "") +
       (products.length ? '<div class="grid">' + products.map((p, i) =>
-        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? '<button class="buy" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
+        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? (p.max_qty <= 5 ? '<span class="tag low">Only ' + p.max_qty + ' left</span>' : "") + '<button class="buy" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
         : '<p class="center">No products yet. Check back soon.</p>') +
       '<div class="foot">Powered by <a href="/">Kivo</a></div></div>';
     initCarousels(root);
@@ -136,7 +137,7 @@ textarea.f{min-height:60px;resize:vertical}
   }
 
   function openSheet(p) {
-    const order = p.in_stock ? '<button class="btn pur" id="addcart" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>';
+    const order = p.in_stock ? (p.max_qty <= 5 ? '<p class="msg" style="color:#a65f00;margin:0 0 8px">Only ' + p.max_qty + ' left in stock</p>' : "") + '<button class="btn pur" id="addcart" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>';
     $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button>' + carousel(p) +
       '<div class="pad"><h2>' + esc(p.name) + '</h2><div>' + priceHtml(p) + '</div>' +
       (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : "") + order + '</div>';
@@ -160,7 +161,31 @@ textarea.f{min-height:60px;resize:vertical}
     $("cartbar").classList.toggle("hidden", !n);
     $("opencart").textContent = "View cart (" + n + ") · " + money(cartTotal());
   }
-  function add(id) { cart[id] = Math.min(20, (cart[id] || 0) + 1); saveCart(); toast("Added to cart"); }
+  const maxOf = (id) => { const p = products.find((x) => x.id === id); return p ? p.max_qty : 0; };
+  function add(id) {
+    const max = maxOf(id), have = cart[id] || 0;
+    if (have >= max) return toast(max > 0 ? "Only " + max + " available." : "Sorry, this item is out of stock.");
+    cart[id] = have + 1; saveCart(); toast("Added to cart");
+  }
+
+  // Keep the cart in line with real stock, before the customer types any details.
+  function clampCart() {
+    let changed = false;
+    Object.keys(cart).forEach((id) => {
+      const max = maxOf(id);
+      if (max < 1) { delete cart[id]; changed = true; }
+      else if (cart[id] > max) { cart[id] = max; changed = true; }
+    });
+    if (changed) { saveCart(); toast("Your cart was updated because stock changed."); }
+  }
+  async function reloadStock() {
+    try {
+      const res = await fetch("/api/storefront?slug=" + encodeURIComponent(slug), { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (res.ok && data.success) { products = data.products || products; clampCart(); }
+    } catch (e) {}
+  }
+  async function openCartFresh() { await reloadStock(); openCart(); }
 
   function payOptions() {
     const opts = payMethods.map((m) => ({ id: m.id, label: m.label }));
@@ -201,7 +226,7 @@ textarea.f{min-height:60px;resize:vertical}
       $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2><p class="msg">Your cart is empty.</p></div>';
     } else {
       $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2>' +
-        ls.map((l) => '<div class="row2"><div style="flex:1"><b>' + esc(l.p.name) + '</b><div class="msg" style="margin:2px 0 0">' + money(l.p.price_ngn) + '</div></div><div class="qty"><button data-m="' + l.p.id + '" type="button" aria-label="Less">−</button><span>' + l.q + '</span><button data-a="' + l.p.id + '" type="button" aria-label="More">+</button></div></div>').join("") +
+        ls.map((l) => '<div class="row2"><div style="flex:1"><b>' + esc(l.p.name) + '</b><div class="msg" style="margin:2px 0 0">' + money(l.p.price_ngn) + (l.p.max_qty <= 5 ? " · only " + l.p.max_qty + " available" : "") + '</div></div><div class="qty"><button data-m="' + l.p.id + '" type="button" aria-label="Less">−</button><span>' + l.q + '</span><button data-a="' + l.p.id + '" type="button" aria-label="More"' + (l.q >= l.p.max_qty ? ' disabled style="opacity:.4"' : "") + '>+</button></div></div>').join("") +
         '<p class="price" style="margin:14px 0 4px">Total: ' + money(cartTotal()) + '</p>' +
         '<input class="f" id="cn" type="text" placeholder="Your name" maxlength="100" autocomplete="name">' +
         '<input class="f" id="cp" type="tel" placeholder="Phone number" maxlength="30" autocomplete="tel">' +
@@ -212,7 +237,7 @@ textarea.f{min-height:60px;resize:vertical}
         payOptions() +
         '<button class="btn" id="place" type="button">Place order</button>' +
         '<p class="msg">Your order is saved with the seller first. You will then see how to pay.</p></div>';
-      $("panel").querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.a] = Math.min(20, cart[b.dataset.a] + 1); saveCart(); openCart(); }));
+      $("panel").querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.a] = Math.min(maxOf(b.dataset.a), cart[b.dataset.a] + 1); saveCart(); openCart(); }));
       $("panel").querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.m] -= 1; if (cart[b.dataset.m] < 1) delete cart[b.dataset.m]; saveCart(); openCart(); }));
       $("place").addEventListener("click", place);
     }
@@ -245,11 +270,11 @@ textarea.f{min-height:60px;resize:vertical}
       });
       $("close").addEventListener("click", closeSheet);
     } catch (e) {
-      toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
+            toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
       btn.disabled = false; btn.textContent = "Place order";
     }
   }
-  $("opencart").addEventListener("click", openCart);
+  $("opencart").addEventListener("click", openCartFresh);
   function closeSheet() { $("sheet").classList.add("hidden"); document.body.style.overflow = ""; }
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
@@ -265,6 +290,7 @@ textarea.f{min-height:60px;resize:vertical}
     store = data.store; contact = data.contact || {}; payMethods = data.payment_methods || []; products = data.products || [];
     document.title = store.name + " | Kivo";
     render();
+    clampCart();
     paintBar();
   } catch (e) {
     fail("Couldn't load this store", "Check your connection and refresh the page.");
