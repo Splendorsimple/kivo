@@ -29,6 +29,7 @@ main{max-width:960px;margin:0 auto;padding:20px}
 .info b{font-size:15px}
 .old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
 .pill{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--pl);color:var(--p)}
+.pill.out{background:#fdecef;color:#b4233c}.pill.low{background:#fff3df;color:#a65f00}
 .pill.draft,.pill.archived{background:#f1f0f5;color:var(--mut)}
 .car{position:relative;aspect-ratio:1;background:var(--pl)}
 .track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
@@ -62,7 +63,7 @@ textarea{min-height:90px;resize:vertical}
   <h1>Products</h1>
   <button id="add" class="btn hidden" type="button">+ Add product</button>
 </header>
-<nav id="tabs" class="tabs hidden"><button id="tab-active" class="on" type="button">Active</button><button id="tab-archived" type="button">Archived</button></nav>
+<nav id="tabs" class="tabs hidden"><button id="tab-active" class="on" type="button">Active</button><button id="tab-low" type="button">Low stock</button><button id="tab-archived" type="button">Archived</button></nav>
 <main id="main"><p class="muted">Loading your products&hellip;</p></main>
 
 <div id="sheet" class="sheet hidden">
@@ -82,6 +83,8 @@ textarea{min-height:90px;resize:vertical}
       <div><label for="stock">Stock quantity</label><input id="stock" type="number" min="0" step="1" inputmode="numeric"></div>
     </div>
     <label><input id="track" type="checkbox" checked> Track inventory</label>
+    <label for="low">Warn me when free stock is at or below</label>
+    <input id="low" type="number" min="0" step="1" inputmode="numeric" value="5">
     <label for="files">Images (up to 10, JPG/PNG/WebP, max 5 MB each)</label>
     <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
     <div id="imgs" class="imgs"></div>
@@ -112,6 +115,15 @@ textarea{min-height:90px;resize:vertical}
   const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "item";
   const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 3500); };
   const sorted = (p) => (p.product_images || []).slice().sort((a, b) => (b.is_primary - a.is_primary) || (a.sort_order - b.sort_order));
+  const invOf = (p) => (p.inventory || []).find((r) => !r.variant_id) || null;
+  const lowOf = (p) => { const i = invOf(p); return i && i.low_stock_threshold != null ? i.low_stock_threshold : 5; };
+  // "out" when nothing is free, "low" at or below the seller's warning level, otherwise "ok".
+  const stockState = (p) => {
+    const i = invOf(p);
+    if (!p.track_inventory || !i) return null;
+    const free = i.quantity - (i.reserved_quantity || 0);
+    return free <= 0 ? "out" : free <= lowOf(p) ? "low" : "ok";
+  };
   const heldOf = (p) => { const i = (p.inventory || []).find((r) => !r.variant_id); return i ? i.reserved_quantity || 0 : 0; };
   const stockOf = (p) => { const i = (p.inventory || []).find((r) => !r.variant_id); return i ? i.quantity : null; };
 
@@ -126,10 +138,12 @@ textarea{min-height:90px;resize:vertical}
 
   async function loadProducts() {
     const { data, error } = await C.from("products")
-      .select("id,name,description,price_ngn,compare_at_price_ngn,status,track_inventory,product_images(id,storage_path,is_primary,sort_order),inventory(quantity,reserved_quantity,variant_id)")
+      .select("id,name,description,price_ngn,compare_at_price_ngn,status,track_inventory,product_images(id,storage_path,is_primary,sort_order),inventory(quantity,reserved_quantity,low_stock_threshold,variant_id)")
       .eq("store_id", store.id)[view === "archived" ? "eq" : "neq"]("status", "archived").order("created_at", { ascending: false });
     if (error) throw error;
-    products = data;
+    products = view === "low"
+      ? data.filter((p) => p.status === "published" && ["out", "low"].includes(stockState(p)))
+      : data;
   }
 
   function renderStoreSetup() {
@@ -149,8 +163,7 @@ textarea{min-height:90px;resize:vertical}
       await start();
     });
   }
-
-  function carousel(imgs, name) {
+    function carousel(imgs, name) {
     if (!imgs.length) return '<div class="thumb">▦</div>';
     const slides = imgs.map((i, n) => '<img class="slide" src="' + esc(imgUrl(i.storage_path)) + '" alt="' + esc(name) + ' photo ' + (n + 1) + '"' + (n ? ' loading="lazy"' : '') + ' draggable="false">').join("");
     if (imgs.length < 2) return '<div class="car"><div class="track">' + slides + '</div></div>';
@@ -184,7 +197,9 @@ textarea{min-height:90px;resize:vertical}
     $("tabs").classList.remove("hidden");
     $("add").classList.toggle("hidden", view === "archived");
     if (!products.length) {
-      $("main").innerHTML = view === "archived"
+      $("main").innerHTML = view === "low"
+        ? '<div class="empty"><h2 style="margin:0 0 6px">Nothing is running low</h2><p class="muted">Published products that are low or sold out will appear here.</p></div>'
+        : view === "archived"
         ? '<div class="empty"><h2 style="margin:0 0 6px">No archived products</h2><p class="muted">Products you archive will appear here.</p></div>'
         : '<div class="empty"><h2 style="margin:0 0 6px">No products yet</h2><p class="muted">Add your first product to start building your catalogue.</p></div>';
       return;
@@ -194,6 +209,7 @@ textarea{min-height:90px;resize:vertical}
       return '<div class="card">' + carousel(imgs, p.name) +
         '<div class="info"><b>' + esc(p.name) + '</b><div>' + money(p.price_ngn) + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : '') + '</div>' +
         '<span class="pill ' + p.status + '">' + (p.status === "published" ? "Published" : p.status === "archived" ? "Archived" : "Draft") + '</span>' +
+        (stockState(p) === "out" ? '<span class="pill out">Out of stock</span>' : stockState(p) === "low" ? '<span class="pill low">Low stock</span>' : "") +
         '<span class="muted">' + (p.track_inventory && stock != null ? stock + " in stock" + (heldOf(p) ? " · " + heldOf(p) + " held for orders" : "") : "Stock not tracked") + '</span>' +
         (view === "archived" ? '<button class="btn alt" data-restore="' + p.id + '" type="button">Restore</button>' : '<button class="btn alt" data-id="' + p.id + '" type="button">Edit</button>') + '</div></div>';
     }).join("") + '</div>';
@@ -220,6 +236,7 @@ textarea{min-height:90px;resize:vertical}
     $("status").value = p && p.status === "published" ? "published" : "draft";
     $("track").checked = p ? p.track_inventory : true;
     $("stock").value = p && stockOf(p) != null ? stockOf(p) : "";
+    $("low").value = p ? lowOf(p) : 5;
     $("files").value = "";
     $("archive").classList.toggle("hidden", !p);
     renderImages();
@@ -270,8 +287,10 @@ textarea{min-height:90px;resize:vertical}
         id = res.data && res.data.id;
       }
       if (res.error) throw res.error;
-      if (row.track_inventory && $("stock").value !== "") {
-        await C.from("inventory").update({ quantity: Math.max(0, parseInt($("stock").value, 10) || 0) }).eq("product_id", id).is("variant_id", null);
+      if (row.track_inventory) {
+        const vals = { low_stock_threshold: $("low").value === "" ? 5 : Math.max(0, parseInt($("low").value, 10) || 0) };
+        if ($("stock").value !== "") vals.quantity = Math.max(0, parseInt($("stock").value, 10) || 0);
+        await C.from("inventory").update(vals).eq("product_id", id).is("variant_id", null);
       }
       for (let n = 0; n < files.length; n++) {
         const ext = files[n].type === "image/png" ? "png" : files[n].type === "image/webp" ? "webp" : "jpg";
@@ -295,6 +314,7 @@ textarea{min-height:90px;resize:vertical}
   function setView(v) {
     view = v;
     $("tab-active").classList.toggle("on", v === "active");
+    $("tab-low").classList.toggle("on", v === "low");
     $("tab-archived").classList.toggle("on", v === "archived");
     refresh();
   }
@@ -315,6 +335,7 @@ textarea{min-height:90px;resize:vertical}
   }
 
   $("tab-active").addEventListener("click", () => setView("active"));
+  $("tab-low").addEventListener("click", () => setView("low"));
   $("tab-archived").addEventListener("click", () => setView("archived"));
   $("add").addEventListener("click", () => openSheet(null));
   $("cancel").addEventListener("click", closeSheet);
