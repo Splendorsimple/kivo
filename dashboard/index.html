@@ -327,6 +327,7 @@
     }
 
     .panel h3 .badge { margin-left: 8px; vertical-align: middle; }
+        .badge.amber { background: #d97706; }
 
     .linkbox {
       margin-top: 16px;
@@ -380,7 +381,7 @@
       <span class="nav-icon">⌂</span> Overview
     </a>
     <a href="#" data-action="products">
-      <span class="nav-icon">▦</span> Products
+      <span class="nav-icon">▦</span> Products <span class="badge amber hidden" id="products-badge"></span>
     </a>
     <a href="#" data-action="orders">
       <span class="nav-icon">▤</span> Orders <span class="badge hidden" id="orders-badge"></span>
@@ -447,7 +448,7 @@
     <div class="grid">
       <article class="panel">
         <div class="panel-icon">▦</div>
-        <h3>Products</h3>
+        <h3>Products <span class="badge amber hidden" id="products-badge-card"></span></h3>
         <p>Manage your product catalogue and inventory.</p>
         <button type="button" data-action="products">Open products</button>
       </article>
@@ -893,8 +894,28 @@
               });
             };
 
+                        // Products that are low on free stock or sold out (published, tracked).
+            const refreshStock = async () => {
+              try {
+                const r = await client.from("inventory")
+                  .select("quantity,reserved_quantity,low_stock_threshold,products!inner(store_id,status,track_inventory)")
+                  .is("variant_id", null)
+                  .eq("products.store_id", store.id)
+                  .eq("products.status", "published")
+                  .eq("products.track_inventory", true);
+                const n = (r.data || []).filter((i) => i.quantity - (i.reserved_quantity || 0) <= (i.low_stock_threshold == null ? 5 : i.low_stock_threshold)).length;
+                ["products-badge", "products-badge-card"].forEach((id) => {
+                  const el = document.getElementById(id);
+                  el.textContent = n > 99 ? "99+" : String(n);
+                  el.classList.toggle("hidden", !n);
+                });
+              } catch (e) {}
+            };
+
             await refresh();
-            setInterval(() => { if (!document.hidden) refresh(); }, 60000);
+            refreshStock();
+            setInterval(() => { if (!document.hidden) { refresh(); refreshStock(); } }, 60000);
+    
           } catch (e) {
             console.error("Store extras failed:", e);
           }
