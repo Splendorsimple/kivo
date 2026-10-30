@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
     }
 
     const { data: stock, error: stockError } = await supabase
-      .from("inventory").select("product_id, quantity, variant_id").in("product_id", ids);
+      .from("inventory").select("product_id, quantity, reserved_quantity, variant_id").in("product_id", ids);
     if (stockError) throw stockError;
 
     const lines = [];
@@ -132,8 +132,10 @@ module.exports = async function handler(req, res) {
     for (const p of products) {
       const qty = wanted.get(p.id);
       const row = (stock || []).find((r) => r.product_id === p.id && !r.variant_id);
-      if (p.track_inventory && row && row.quantity < qty) {
-        return fail(res, 409, p.name + " only has " + row.quantity + " left in stock.");
+      // Stock already held for confirmed orders is not available to new customers.
+      const free = row ? Math.max(0, row.quantity - (row.reserved_quantity || 0)) : 0;
+      if (p.track_inventory && row && free < qty) {
+        return fail(res, 409, free > 0 ? p.name + " only has " + free + " left in stock." : p.name + " is out of stock.");
       }
       const lineTotal = Number(p.price_ngn) * qty;
       subtotal += lineTotal;
@@ -226,4 +228,3 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
-    
