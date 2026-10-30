@@ -105,6 +105,14 @@ module.exports = async function handler(req, res) {
         (row) => !row.variant_id
       );
 
+      // How many a customer can order right now: stock minus what is held
+      // for confirmed orders, capped at 20 so large stock levels stay private.
+      const tracked = product.track_inventory && stockRow;
+      const free = tracked
+        ? Math.max(0, stockRow.quantity - (stockRow.reserved_quantity || 0))
+        : 20;
+      const maxQty = Math.min(free, 20);
+
       return {
         id: product.id,
         name: product.name,
@@ -113,8 +121,8 @@ module.exports = async function handler(req, res) {
         price_ngn: product.price_ngn,
         compare_at_price_ngn: product.compare_at_price_ngn,
         images,
-        in_stock:
-          !product.track_inventory || !stockRow || stockRow.quantity - (stockRow.reserved_quantity || 0) > 0
+        in_stock: maxQty > 0,
+        max_qty: maxQty
       };
     });
 
@@ -222,4 +230,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
-      
+        
