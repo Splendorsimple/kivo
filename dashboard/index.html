@@ -311,6 +311,56 @@
       opacity: 0.55;
       cursor: default;
     }
+  
+    .badge {
+      margin-left: auto;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 99px;
+      background: #e11d48;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .panel h3 .badge { margin-left: 8px; vertical-align: middle; }
+
+    .linkbox {
+      margin-top: 16px;
+      padding: 18px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+
+    .linkrow {
+      margin: 8px 0 12px;
+      padding: 10px 12px;
+      background: var(--purple-light);
+      border-radius: 10px;
+      color: var(--purple);
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .linkacts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .linkacts button, .linkacts a {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .linkacts #share-store { background: #25d366; color: white; }
+    .linknote { margin: 10px 0 0; color: #a65f00; font-size: 13px; }
+    .linknote:empty { display: none; }
   </style></head><body>
   <div id="auth-loading" class="loading-screen">
     <div class="loading-card">
@@ -325,8 +375,7 @@
         <span class="brand-mark">K</span>
         <span>Kivo</span>
       </a>  <div class="nav-label">Workspace</div>
-
-  <nav class="nav" aria-label="Main navigation">
+        <nav class="nav" aria-label="Main navigation">
     <a href="/dashboard/" class="active">
       <span class="nav-icon">⌂</span> Overview
     </a>
@@ -334,7 +383,7 @@
       <span class="nav-icon">▦</span> Products
     </a>
     <a href="#" data-action="orders">
-      <span class="nav-icon">▤</span> Orders
+      <span class="nav-icon">▤</span> Orders <span class="badge hidden" id="orders-badge"></span>
     </a>
     <a href="#" data-action="customers">
       <span class="nav-icon">♙</span> Customers
@@ -346,7 +395,8 @@
       <span class="nav-icon">⚙</span> Settings <span class="soon">Soon</span>
     </a>
   </nav>
-        <div class="sidebar-bottom">
+
+  <div class="sidebar-bottom">
     <div class="help-card">
       <strong>Need a hand?</strong>
       <p>Get help setting up your Kivo workspace.</p>
@@ -381,6 +431,17 @@
       <p>Your business workspace is ready. Use the navigation to access your seller tools.</p>
     </div>
 
+    <div class="linkbox hidden" id="linkbox">
+      <strong>Your store link</strong>
+      <div class="linkrow"><span id="store-url"></span></div>
+      <div class="linkacts">
+        <button type="button" id="copy-link">Copy link</button>
+        <a id="share-store" href="#" target="_blank" rel="noopener">Share on WhatsApp</a>
+        <a id="view-store" href="#" target="_blank" rel="noopener">View store</a>
+      </div>
+      <p id="link-note" class="linknote"></p>
+    </div>
+
     <h2 class="section-title">Your workspace</h2>
 
     <div class="grid">
@@ -393,7 +454,7 @@
 
       <article class="panel">
         <div class="panel-icon">▤</div>
-        <h3>Orders</h3>
+        <h3>Orders <span class="badge hidden" id="orders-badge-card"></span></h3>
         <p>Review and manage your customer orders.</p>
         <button type="button" data-action="orders">Open orders</button>
       </article>
@@ -597,7 +658,8 @@
           });
 
           const result = await response.json();
-                  if (!response.ok || !result.success) {
+
+          if (!response.ok || !result.success) {
             clearPendingSubscription();
             cleanDashboardUrl();
 
@@ -626,8 +688,7 @@
 
           // Replace the dashboard history entry with the Paystack page.
           location.replace(result.authorization_url);
-
-          return { redirecting: true };
+                    return { redirecting: true };
         } catch (error) {
           console.error("Checkout initialization failed:", error);
 
@@ -792,6 +853,54 @@
         app.classList.remove("hidden");
 
         if (billing && billing.message) showToast(billing.message);
+
+        // Store link box and the "new orders" badge. This runs after the
+        // workspace is already showing, so it can never hold up the page.
+        async function loadStoreExtras() {
+          try {
+            const st = await client.from("stores").select("id,slug,status").eq("owner_id", session.user.id).order("created_at").limit(1);
+            const store = st.data && st.data[0];
+            if (!store) return;
+
+            const url = location.origin + "/s/" + store.slug;
+            document.getElementById("store-url").textContent = url;
+            document.getElementById("view-store").href = url;
+            document.getElementById("share-store").href = "https://wa.me/?text=" + encodeURIComponent("Shop with us on Kivo: " + url);
+            document.getElementById("link-note").textContent = store.status === "published" ? "" : "Your store is hidden right now. Turn on Store is live in My store so customers can open this link.";
+            document.getElementById("linkbox").classList.remove("hidden");
+
+            document.getElementById("copy-link").addEventListener("click", async () => {
+              try {
+                await navigator.clipboard.writeText(url);
+              } catch (e) {
+                const t = document.createElement("textarea");
+                t.value = url;
+                document.body.appendChild(t);
+                t.select();
+                try { document.execCommand("copy"); } catch (e2) {}
+                t.remove();
+              }
+              showToast("Store link copied.");
+            });
+
+            const refresh = async () => {
+              const r = await client.from("orders").select("id", { count: "exact", head: true }).eq("store_id", store.id).eq("order_status", "pending");
+              const n = r.count || 0;
+              ["orders-badge", "orders-badge-card"].forEach((id) => {
+                const el = document.getElementById(id);
+                el.textContent = n > 99 ? "99+" : String(n);
+                el.classList.toggle("hidden", !n);
+              });
+            };
+
+            await refresh();
+            setInterval(() => { if (!document.hidden) refresh(); }, 60000);
+          } catch (e) {
+            console.error("Store extras failed:", e);
+          }
+        }
+
+        loadStoreExtras();
 
         const sidebar = document.getElementById("sidebar");
         const menuButton = document.getElementById("mobile-menu");
