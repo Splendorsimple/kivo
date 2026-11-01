@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, order_number, order_status, payment_status, payment_method, total_ngn, created_at, updated_at, order_items(product_name, quantity)")
+      .select("id, order_number, order_status, payment_status, payment_method, total_ngn, created_at, updated_at, order_items(product_name, variant_name, quantity)")
       .eq("store_id", store.id).eq("order_number", num).maybeSingle();
     if (orderError) throw orderError;
 
@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
         total_ngn: order.total_ngn,
         created_at: order.created_at,
         updated_at: order.updated_at,
-        items: (order.order_items || []).map((i) => ({ name: i.product_name, quantity: i.quantity }))
+        items: (order.order_items || []).map((i) => ({ name: i.product_name + (i.variant_name ? " (" + i.variant_name + ")" : ""), quantity: i.quantity }))
       }
     });
   } catch (error) {
