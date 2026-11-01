@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f8f7fc">
+<title>Invoice | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc;--ok:#17803d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px "DM Sans",sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+.center{text-align:center;color:var(--mut);padding:60px 20px}
+.doc{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;position:relative;overflow:hidden}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.logo{width:48px;height:48px;border-radius:12px;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-weight:700;font-size:20px;flex:none}
+.brand b{font-size:17px;display:block;overflow-wrap:anywhere}
+.kind{text-align:right;flex:none}
+.kind h1{margin:0;font-size:22px;letter-spacing:.06em;color:var(--p)}
+.mut{color:var(--mut);font-size:13px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}
+.meta h3{margin:0 0 4px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.meta p{margin:2px 0;overflow-wrap:anywhere}
+.items{border-top:1px solid var(--line)}
+.row{display:flex;gap:10px;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line)}
+.row .n{flex:1;min-width:0;overflow-wrap:anywhere}
+.row .q{color:var(--mut);white-space:nowrap}
+.row .t{white-space:nowrap;font-weight:500}
+.sum{margin-top:10px}
+.sum div{display:flex;justify-content:space-between;padding:4px 0}
+.sum .tot{border-top:2px solid var(--ink);margin-top:6px;padding-top:10px;font-size:18px;font-weight:700}
+.stamp{position:absolute;right:18px;top:78px;transform:rotate(-10deg);border:3px solid var(--ok);color:var(--ok);border-radius:10px;padding:2px 12px;font-weight:700;font-size:20px;letter-spacing:.1em;opacity:.85}
+.box{background:var(--pl);border-radius:12px;padding:14px;margin-top:18px;line-height:1.7;overflow-wrap:anywhere}
+.box.ok{background:#e6f7ec}
+.box.bad{background:#fdecef;color:#b4233c}
+.box a{color:var(--p);font-weight:700}
+.btns{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.btn{display:block;text-align:center;border:0;border-radius:12px;padding:13px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;background:var(--p);color:#fff}
+.btn.wa{background:#25d366}
+.btn.alt{background:var(--pl);color:var(--p)}
+.foot{text-align:center;color:var(--mut);font-size:12px;padding:18px 0 6px}
+.foot a{color:var(--p);text-decoration:none}
+@media print{
+  body{background:#fff}
+  .wrap{max-width:none;padding:0}
+  .doc{border:0;border-radius:0;padding:0}
+  .btns{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><p class="center">Loading your document&hellip;</p></div>
+
+<script>
+(async function () {
+  "use strict";
+  const root = document.getElementById("root");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const day = (d) => new Date(d).toLocaleDateString("en-NG", { dateStyle: "long" });
+  const slug = (location.pathname.split("/").filter(Boolean)[1] || "").toLowerCase();
+  const q = new URLSearchParams(location.search);
+  const METHOD = { bank_transfer: "Bank transfer", cash_on_delivery: "Pay on delivery", online: "Online payment", whatsapp: "Arranged on WhatsApp", other: "Other" };
+
+  function show(title, text) { root.innerHTML = '<div class="center"><h2 style="color:#201b2d">' + esc(title) + '</h2><p>' + esc(text) + '</p></div>'; }
+
+  function render(d) {
+    const o = d.order, paid = o.payment_status === "paid", cancelled = o.order_status === "cancelled";
+    const kind = paid ? "RECEIPT" : "INVOICE", cust = o.customer || {};
+    document.title = (paid ? "Receipt " : "Invoice ") + o.order_number + " | " + d.store.name;
+
+    let how = "";
+    if (paid) {
+      how = '<div class="box ok"><b>Payment received, thank you.</b><br>' + money(o.total_ngn) + ' paid' + (o.paid_at ? ' on ' + esc(day(o.paid_at)) : "") + ' · ' + esc(METHOD[o.payment_method] || "Payment") + '</div>';
+    } else if (cancelled) {
+      how = '<div class="box bad">This order was cancelled. No payment is due.</div>';
+    } else {
+      const p = d.pay_info || {};
+      let inner = "<b>Amount due: " + money(o.total_ngn) + "</b><br>";
+      if (p.type === "bank_transfer" && p.account_number) inner += "Transfer to " + esc(p.bank_name) + "<br><b>" + esc(p.account_number) + "</b> · " + esc(p.account_name) + "<br>Use <b>" + esc(o.order_number) + "</b> as the payment reference.";
+      else if (p.type === "online" && p.url) inner += '<a href="' + esc(p.url) + '" target="_blank" rel="noopener">Pay online</a><br>Use ' + esc(o.order_number) + " as the payment note.";
+      else if (o.payment_method === "cash_on_delivery") inner += "Pay in cash when your order is delivered.";
+      else inner += "Please arrange payment with the seller" + (d.contact.whatsapp ? " on WhatsApp." : ".");
+      how = '<div class="box">' + inner + '</div>';
+    }
+
+    const rows = o.items.map((i) => '<div class="row"><span class="n">' + esc(i.name) + (i.variant ? ' <span class="mut">(' + esc(i.variant) + ')</span>' : "") + '<br><span class="q">' + esc(i.quantity) + ' × ' + money(i.unit_price_ngn) + '</span></span><span class="t">' + money(i.line_total_ngn) + '</span></div>').join("");
+    const lines = [["Subtotal", o.subtotal_ngn]];
+    if (Number(o.shipping_ngn) > 0) lines.push(["Delivery", o.shipping_ngn]);
+    if (Number(o.discount_ngn) > 0) lines.push(["Discount", -o.discount_ngn]);
+    if (Number(o.tax_ngn) > 0) lines.push(["Tax", o.tax_ngn]);
+    const sum = lines.map((l) => '<div><span>' + l[0] + '</span><span>' + (l[1] < 0 ? "−" + money(-l[1]) : money(l[1])) + '</span></div>').join("") +
+      '<div class="tot"><span>' + (paid ? "Total paid" : "Total") + '</span><span>' + money(o.total_ngn) + '</span></div>';
+    const contact = [d.contact.phone, d.contact.email].filter(Boolean).map(esc).join(" · ");
+    const track = "/t/" + encodeURIComponent(slug) + location.search;
+
+    root.innerHTML = '<div class="doc">' + (paid ? '<div class="stamp">PAID</div>' : "") +
+      '<div class="top"><div class="brand"><div class="logo"' + (d.store.logo_url ? ' style="background-image:url(\'' + esc(d.store.logo_url) + '\')"' : "") + '>' + (d.store.logo_url ? "" : esc((d.store.name || "K").trim().charAt(0).toUpperCase())) + '</div><div><b>' + esc(d.store.name) + '</b>' + (contact ? '<span class="mut">' + contact + '</span>' : "") + '</div></div>' +
+      '<div class="kind"><h1>' + kind + '</h1><span class="mut">' + esc(o.order_number) + '</span></div></div>' +
+      '<div class="meta"><div><h3>Billed to</h3><p><b>' + esc(cust.name || "Customer") + '</b></p>' + (cust.phone ? '<p>' + esc(cust.phone) + '</p>' : "") + (cust.address || cust.city ? '<p>' + esc([cust.address, cust.city].filter(Boolean).join(", ")) + '</p>' : "") + '</div>' +
+      '<div><h3>' + (paid ? "Date paid" : "Date issued") + '</h3><p>' + esc(day(paid && o.paid_at ? o.paid_at : o.created_at)) + '</p><h3 style="margin-top:10px">Order placed</h3><p>' + esc(day(o.created_at)) + '</p></div></div>' +
+      '<div class="items">' + rows + '</div><div class="sum">' + sum + '</div>' + how + '</div>' +
+      '<div class="btns"><button class="btn" id="print" type="button">Print or save as PDF</button>' +
+      (d.contact.whatsapp ? '<a class="btn wa" href="https://wa.me/' + esc(d.contact.whatsapp) + '?text=' + encodeURIComponent("Hi, about my " + (paid ? "receipt" : "invoice") + " for order " + o.order_number + ".") + '" target="_blank" rel="noopener">Message the seller on WhatsApp</a>' : "") +
+      '<a class="btn alt" href="' + esc(track) + '">Track this order</a></div>' +
+      '<div class="foot">Generated by <a href="/">Kivo</a></div>';
+    document.getElementById("print").addEventListener("click", () => window.print());
+  }
+
+  if (!slug || !q.get("o") || !q.get("k")) return show("Document not found", "This link is incomplete.");
+  try {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch("/api/order-document?slug=" + encodeURIComponent(slug) + "&o=" + encodeURIComponent(q.get("o")) + "&k=" + encodeURIComponent(q.get("k")), { signal: ctl.signal, headers: { Accept: "application/json" } });
+    clearTimeout(timer);
+    if (res.status === 404) return show("Document not found", "This link is not valid. Check the link the seller sent you.");
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error();
+    render(data);
+  } catch (e) { show("Couldn't load this document", "Check your connection and refresh the page."); }
+})();
+</script>
+</body>
+</html>
