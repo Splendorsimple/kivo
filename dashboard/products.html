@@ -39,6 +39,11 @@ main{max-width:960px;margin:0 auto;padding:20px}
 .nav.prev{left:8px}.nav.next{right:8px}
 .count{position:absolute;right:8px;bottom:8px;background:#000a;color:#fff;font-size:11px;padding:2px 8px;border-radius:99px}
 .tabs{display:flex;gap:8px;max-width:960px;margin:14px auto 0;padding:0 20px}.tabs button{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:99px;cursor:pointer;font-weight:500}.tabs .on{background:var(--pl);color:var(--p);border-color:var(--p)}
+.vrow{display:flex;gap:6px;margin-top:8px}.vrow input[type=text]{flex:2;min-width:0}.vrow input[type=number]{flex:1;min-width:0}
+.rmx{border:0;background:var(--pl);color:var(--p);border-radius:10px;width:40px;cursor:pointer;font-size:16px;flex:none}
+.optsec{margin-top:6px;padding-top:4px;border-top:1px solid var(--line)}
+.opt-h{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chipb{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:13px}
 .empty,.box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
 .box{max-width:420px;margin:30px auto;text-align:left}
 label{display:block;font-weight:500;margin:12px 0 4px}
@@ -80,11 +85,32 @@ textarea{min-height:90px;resize:vertical}
     <div class="row">
       <div><label for="status">Status</label>
         <select id="status"><option value="draft">Draft</option><option value="published">Published</option></select></div>
-      <div><label for="stock">Stock quantity</label><input id="stock" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div id="stockwrap"><label for="stock">Stock quantity</label><input id="stock" type="number" min="0" step="1" inputmode="numeric"></div>
     </div>
     <label><input id="track" type="checkbox" checked> Track inventory</label>
     <label for="low">Warn me when free stock is at or below</label>
     <input id="low" type="number" min="0" step="1" inputmode="numeric" value="5">
+    <div class="optsec">
+      <label id="optlabel"><input id="hasopts" type="checkbox"> This product has options <span class="muted">(size, portion, flavour, colour&hellip;)</span></label>
+      <p id="optlock" class="muted hidden">Options like size, portion, flavour or colour are available on the Growth plan and above.</p>
+      <div id="optbox" class="hidden">
+        <p class="muted">Name an option and list its choices, separated by commas. For example Portion: Small, Large &middot; Volume: 330ml, 500ml &middot; Size: S, M, L &middot; Colour: Red, Blue. Stock is tracked for each choice, so it replaces the product's own stock number.</p>
+        <div class="muted">Start from an example, then change anything:</div>
+        <div class="opt-h">
+          <button class="chipb" data-pre="food" type="button">Food &amp; snacks</button>
+          <button class="chipb" data-pre="drinks" type="button">Drinks</button>
+          <button class="chipb" data-pre="clothes" type="button">Clothes &amp; shoes</button>
+          <button class="chipb" data-pre="custom" type="button">Custom</button>
+        </div>
+        <div class="row"><input id="o1n" list="optnames" type="text" maxlength="40" placeholder="Option name, e.g. Portion"><input id="o1v" type="text" placeholder="Small, Medium, Large"></div>
+        <div class="row" style="margin-top:8px"><input id="o2n" list="optnames" type="text" maxlength="40" placeholder="Second option (optional)"><input id="o2v" type="text" placeholder="e.g. Chilled, Warm"></div>
+        <datalist id="optnames"><option value="Size"><option value="Portion"><option value="Volume (ml)"><option value="Flavour"><option value="Colour"><option value="Pack size"></datalist>
+        <button id="gen" class="btn alt" type="button" style="margin-top:10px">Create choices</button>
+        <div id="vrows"></div>
+        <button id="addv" class="btn alt" type="button" style="margin-top:8px">+ Add one choice</button>
+        <p class="muted" style="margin-top:8px">Leave a price empty to use the product price. Removed choices are switched off, so old orders keep their details.</p>
+      </div>
+    </div>
     <label for="files">Images (up to 10, JPG/PNG/WebP, max 5 MB each)</label>
     <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
     <div id="imgs" class="imgs"></div>
@@ -107,9 +133,8 @@ textarea{min-height:90px;resize:vertical}
   );
   const BUCKET = "product-images", MAX_IMAGES = 10, MAX_BYTES = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
-  let store = null, products = [], editing = null, view = "active", tt;
-
-  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  let store = null, products = [], editing = null, view = "active", canVars = false, vars = [], tt;
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
   const imgUrl = (p) => C.storage.from(BUCKET).getPublicUrl(p).data.publicUrl;
   const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "item";
@@ -118,17 +143,49 @@ textarea{min-height:90px;resize:vertical}
   const invOf = (p) => (p.inventory || []).find((r) => !r.variant_id) || null;
   const lowOf = (p) => { const i = invOf(p); return i && i.low_stock_threshold != null ? i.low_stock_threshold : 5; };
   // "out" when nothing is free, "low" at or below the seller's warning level, otherwise "ok".
+  const variantsOf = (p) => (p.product_variants || []).filter((v) => v.is_active).slice().sort((a, b) => a.sort_order - b.sort_order);
   const stockState = (p) => {
+    const vs = variantsOf(p);
+    if (p.track_inventory && vs.length) {
+      const rows = vs.map((v) => (p.inventory || []).find((r) => r.variant_id === v.id)).filter(Boolean);
+      if (!rows.length) return null;
+      const frees = rows.map((r) => r.quantity - (r.reserved_quantity || 0));
+      if (frees.every((f) => f <= 0)) return "out";
+      return rows.some((r, k) => frees[k] <= (r.low_stock_threshold == null ? 5 : r.low_stock_threshold)) ? "low" : "ok";
+    }
     const i = invOf(p);
     if (!p.track_inventory || !i) return null;
     const free = i.quantity - (i.reserved_quantity || 0);
     return free <= 0 ? "out" : free <= lowOf(p) ? "low" : "ok";
   };
-  const heldOf = (p) => { const i = (p.inventory || []).find((r) => !r.variant_id); return i ? i.reserved_quantity || 0 : 0; };
+  const heldOf = (p) => {
+    const vs = variantsOf(p);
+    const rows = vs.length ? vs.map((v) => (p.inventory || []).find((r) => r.variant_id === v.id)).filter(Boolean) : [(p.inventory || []).find((r) => !r.variant_id)].filter(Boolean);
+    return rows.reduce((t, r) => t + (r.reserved_quantity || 0), 0);
+  };
+  const stockText = (p) => {
+    const vs = variantsOf(p);
+    if (vs.length) {
+      const rows = vs.map((v) => (p.inventory || []).find((r) => r.variant_id === v.id)).filter(Boolean);
+      const total = rows.reduce((t, r) => t + r.quantity, 0), held = rows.reduce((t, r) => t + (r.reserved_quantity || 0), 0);
+      return vs.length + (vs.length === 1 ? " choice" : " choices") + (p.track_inventory ? " · " + total + " in stock" + (held ? " · " + held + " held for orders" : "") : "");
+    }
+    const stock = stockOf(p);
+    return p.track_inventory && stock != null ? stock + " in stock" + (heldOf(p) ? " · " + heldOf(p) + " held for orders" : "") : "Stock not tracked";
+  };
   const stockOf = (p) => { const i = (p.inventory || []).find((r) => !r.variant_id); return i ? i.quantity : null; };
 
   const { data: { session } } = await C.auth.getSession();
   if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function loadPlan() {
+    try {
+      const sub = await C.from("subscriptions").select("plan_code").eq("user_id", session.user.id).in("status", ["active", "trialing"]).limit(1).maybeSingle();
+      if (!sub.data) return false;
+      const pl = await C.from("plans").select("allow_variants").eq("code", sub.data.plan_code).maybeSingle();
+      return !!(pl.data && pl.data.allow_variants);
+    } catch (e) { return false; }
+  }
 
   async function loadStore() {
     const { data, error } = await C.from("stores").select("id,name,slug").eq("owner_id", session.user.id).order("created_at").limit(1);
@@ -138,7 +195,7 @@ textarea{min-height:90px;resize:vertical}
 
   async function loadProducts() {
     const { data, error } = await C.from("products")
-      .select("id,name,description,price_ngn,compare_at_price_ngn,status,track_inventory,product_images(id,storage_path,is_primary,sort_order),inventory(quantity,reserved_quantity,low_stock_threshold,variant_id)")
+      .select("id,name,description,price_ngn,compare_at_price_ngn,status,track_inventory,product_images(id,storage_path,is_primary,sort_order),inventory(quantity,reserved_quantity,low_stock_threshold,variant_id),product_variants(id,name,options,price_ngn,is_active,sort_order)")
       .eq("store_id", store.id)[view === "archived" ? "eq" : "neq"]("status", "archived").order("created_at", { ascending: false });
     if (error) throw error;
     products = view === "low"
@@ -163,7 +220,8 @@ textarea{min-height:90px;resize:vertical}
       await start();
     });
   }
-    function carousel(imgs, name) {
+
+  function carousel(imgs, name) {
     if (!imgs.length) return '<div class="thumb">▦</div>';
     const slides = imgs.map((i, n) => '<img class="slide" src="' + esc(imgUrl(i.storage_path)) + '" alt="' + esc(name) + ' photo ' + (n + 1) + '"' + (n ? ' loading="lazy"' : '') + ' draggable="false">').join("");
     if (imgs.length < 2) return '<div class="car"><div class="track">' + slides + '</div></div>';
@@ -210,12 +268,111 @@ textarea{min-height:90px;resize:vertical}
         '<div class="info"><b>' + esc(p.name) + '</b><div>' + money(p.price_ngn) + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : '') + '</div>' +
         '<span class="pill ' + p.status + '">' + (p.status === "published" ? "Published" : p.status === "archived" ? "Archived" : "Draft") + '</span>' +
         (stockState(p) === "out" ? '<span class="pill out">Out of stock</span>' : stockState(p) === "low" ? '<span class="pill low">Low stock</span>' : "") +
-        '<span class="muted">' + (p.track_inventory && stock != null ? stock + " in stock" + (heldOf(p) ? " · " + heldOf(p) + " held for orders" : "") : "Stock not tracked") + '</span>' +
+        '<span class="muted">' + stockText(p) + '</span>' +
         (view === "archived" ? '<button class="btn alt" data-restore="' + p.id + '" type="button">Restore</button>' : '<button class="btn alt" data-id="' + p.id + '" type="button">Edit</button>') + '</div></div>';
     }).join("") + '</div>';
     initCarousels();
     document.querySelectorAll("[data-restore]").forEach((b) => b.addEventListener("click", () => restore(b.dataset.restore)));
     document.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => openSheet(products.find((p) => p.id === b.dataset.id))));
+  }
+
+  function renderVars() {
+    $("vrows").innerHTML = vars.map((v, i) => '<div class="vrow"><input type="text" data-f="name" maxlength="100" placeholder="Choice name" value="' + esc(v.name) + '">' +
+      '<input type="number" data-f="price" min="0" step="1" inputmode="numeric" placeholder="Price ₦" value="' + (v.price == null ? "" : esc(v.price)) + '">' +
+      '<input type="number" data-f="stock" min="0" step="1" inputmode="numeric" placeholder="Stock" value="' + (v.stock == null ? "" : esc(v.stock)) + '">' +
+      '<button class="rmx" data-r="' + i + '" type="button" aria-label="Remove">✕</button></div>').join("");
+    $("vrows").querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => { readVars(); vars.splice(Number(b.dataset.r), 1); renderVars(); }));
+  }
+
+  function readVars() {
+    vars = Array.from($("vrows").querySelectorAll(".vrow")).map((r, i) => ({
+      id: vars[i] ? vars[i].id : null, options: vars[i] ? vars[i].options : {}, order: i,
+      name: r.querySelector("[data-f=name]").value, price: r.querySelector("[data-f=price]").value, stock: r.querySelector("[data-f=stock]").value
+    }));
+  }
+
+  function paintOpts() {
+    const on = $("hasopts").checked, locked = !canVars && !vars.some((v) => v.id);
+    $("optlabel").classList.toggle("hidden", locked);
+    $("optlock").classList.toggle("hidden", !locked);
+    $("optbox").classList.toggle("hidden", !on || locked);
+    $("stockwrap").classList.toggle("hidden", on && !locked);
+    renderVars();
+  }
+
+  function generate() {
+    readVars();
+    const groups = [[$("o1n").value, $("o1v").value], [$("o2n").value, $("o2v").value]]
+      .map(([n, v]) => ({ name: n.trim(), values: Array.from(new Set(v.split(",").map((x) => x.trim()).filter(Boolean))).slice(0, 12) }))
+      .filter((g) => g.name || g.values.length);
+    if (!groups.length) return toast("Enter an option name and its choices, like Portion: Small, Large.");
+    if (groups.some((g) => !g.name || !g.values.length)) return toast("Give each option both a name and its choices.");
+    let combos = [{}];
+    for (const g of groups) combos = combos.flatMap((c) => g.values.map((val) => Object.assign({}, c, { [g.name]: val })));
+    const have = new Set(vars.map((v) => String(v.name).trim().toLowerCase()));
+    let added = 0;
+    for (const c of combos) {
+      const name = Object.values(c).join(" / ");
+      if (have.has(name.toLowerCase())) continue;
+      if (vars.length >= 50) { toast("You can add up to 50 choices."); break; }
+      vars.push({ id: null, name, price: "", stock: "", options: c, order: vars.length });
+      have.add(name.toLowerCase()); added++;
+    }
+    renderVars();
+    toast(added ? added + " choices added. Set the stock and price below." : "Those choices already exist.");
+  }
+
+      function checkOptions() {
+    readVars();
+    if (!vars.length) return "Add at least one choice for this product's options.";
+    const seen = new Set();
+    for (const v of vars) {
+      v.name = String(v.name).trim();
+      if (!v.name) return "Every choice needs a name.";
+      if (seen.has(v.name.toLowerCase())) return "You have two choices named " + v.name + ".";
+      seen.add(v.name.toLowerCase());
+      if (v.price !== "" && v.price != null && (!Number.isInteger(Number(v.price)) || Number(v.price) < 0)) return "Check the price for " + v.name + ".";
+      if (v.stock !== "" && v.stock != null && (!Number.isInteger(Number(v.stock)) || Number(v.stock) < 0)) return "Check the stock for " + v.name + ".";
+      v.price = v.price === "" || v.price == null ? null : Number(v.price);
+      v.stock = v.stock === "" || v.stock == null ? 0 : Number(v.stock);
+    }
+    return null;
+  }
+
+  async function saveOptions(id, tracked) {
+    const low = $("low").value === "" ? 5 : Math.max(0, parseInt($("low").value, 10) || 0);
+    const existing = (editing && editing.product_variants) || [];
+    const keep = new Set(vars.filter((v) => v.id).map((v) => v.id));
+    // Removed choices are switched off, not deleted, so old orders keep their details.
+    for (const v of existing.filter((x) => x.is_active && !keep.has(x.id))) {
+      const r = await C.from("product_variants").update({ is_active: false }).eq("id", v.id);
+      if (r.error) throw r.error;
+    }
+    for (const v of vars.filter((x) => x.id)) {
+      const r = await C.from("product_variants").update({ name: v.name, price_ngn: v.price, sort_order: v.order }).eq("id", v.id);
+      if (r.error) throw r.error;
+      if (tracked) {
+        const q = await C.from("inventory").update({ quantity: v.stock, low_stock_threshold: low }).eq("variant_id", v.id);
+        if (q.error) throw q.error;
+      }
+    }
+    const fresh = vars.filter((x) => !x.id);
+    if (!fresh.length) return;
+    // The product's own stock moves into its choices, so it must be cleared first.
+    if (tracked && !existing.length) {
+      const z = await C.from("inventory").update({ quantity: 0 }).eq("product_id", id).is("variant_id", null);
+      if (z.error) throw new Error("This product has stock held for orders. Ship or cancel those orders first, then add options.");
+    }
+    const ins = await C.from("product_variants").insert(fresh.map((v) => ({ product_id: id, name: v.name, options: v.options, price_ngn: v.price, sort_order: v.order }))).select("id,name");
+    if (ins.error) throw ins.error;
+    if (tracked) {
+      for (const v of fresh) {
+        const made = ins.data.find((r) => r.name === v.name);
+        if (!made) continue;
+        const q = await C.from("inventory").update({ quantity: v.stock, low_stock_threshold: low }).eq("variant_id", made.id);
+        if (q.error) throw q.error;
+      }
+    }
   }
 
   function renderImages() {
@@ -237,6 +394,11 @@ textarea{min-height:90px;resize:vertical}
     $("track").checked = p ? p.track_inventory : true;
     $("stock").value = p && stockOf(p) != null ? stockOf(p) : "";
     $("low").value = p ? lowOf(p) : 5;
+    vars = p ? variantsOf(p).map((v, k) => { const r = (p.inventory || []).find((x) => x.variant_id === v.id); return { id: v.id, name: v.name, price: v.price_ngn, stock: r ? r.quantity : 0, options: v.options || {}, order: k }; }) : [];
+    $("hasopts").checked = vars.length > 0;
+    $("hasopts").disabled = vars.length > 0;
+    $("o1n").value = ""; $("o1v").value = ""; $("o2n").value = ""; $("o2v").value = "";
+    paintOpts();
     $("files").value = "";
     $("archive").classList.toggle("hidden", !p);
     renderImages();
@@ -276,6 +438,7 @@ textarea{min-height:90px;resize:vertical}
       if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) return toast("Use JPG, PNG or WebP images.");
       if (f.size > MAX_BYTES) return toast(f.name + " is over 5 MB.");
     }
+    if ($("hasopts").checked && (canVars || vars.some((v) => v.id))) { const err = checkOptions(); if (err) return toast(err); }
     const row = { name, description: $("desc").value.trim() || null, price_ngn: price, compare_at_price_ngn: cmp === "" ? null : Number(cmp), status: $("status").value, track_inventory: $("track").checked };
     $("save").disabled = true;
     try {
@@ -287,11 +450,13 @@ textarea{min-height:90px;resize:vertical}
         id = res.data && res.data.id;
       }
       if (res.error) throw res.error;
-      if (row.track_inventory) {
+      const useOpts = $("hasopts").checked && (canVars || vars.some((v) => v.id));
+      if (!useOpts && row.track_inventory) {
         const vals = { low_stock_threshold: $("low").value === "" ? 5 : Math.max(0, parseInt($("low").value, 10) || 0) };
         if ($("stock").value !== "") vals.quantity = Math.max(0, parseInt($("stock").value, 10) || 0);
         await C.from("inventory").update(vals).eq("product_id", id).is("variant_id", null);
       }
+      if (useOpts) await saveOptions(id, row.track_inventory);
       for (let n = 0; n < files.length; n++) {
         const ext = files[n].type === "image/png" ? "png" : files[n].type === "image/webp" ? "webp" : "jpg";
         const path = store.id + "/" + id + "/" + crypto.randomUUID() + "." + ext;
@@ -329,11 +494,25 @@ textarea{min-height:90px;resize:vertical}
   async function start() {
     try {
       await loadStore();
+      canVars = await loadPlan();
       if (!store) return renderStoreSetup();
       await loadProducts(); renderList();
     } catch (e) { $("main").innerHTML = '<div class="empty"><p>Could not load your products.</p><p class="muted">' + esc(e.message) + '</p></div>'; }
   }
 
+  const PRESETS = {
+    food: ["Portion", "Small, Medium, Large", "", ""],
+    drinks: ["Volume (ml)", "330ml, 500ml, 750ml", "", ""],
+    clothes: ["Size", "S, M, L, XL", "Colour", "Black, White"],
+    custom: ["", "", "", ""]
+  };
+  document.querySelectorAll("[data-pre]").forEach((b) => b.addEventListener("click", () => {
+    const p = PRESETS[b.dataset.pre];
+    $("o1n").value = p[0]; $("o1v").value = p[1]; $("o2n").value = p[2]; $("o2v").value = p[3];
+  }));
+  $("hasopts").addEventListener("change", paintOpts);
+  $("gen").addEventListener("click", generate);
+  $("addv").addEventListener("click", () => { readVars(); vars.push({ id: null, name: "", price: "", stock: "", options: {}, order: vars.length }); renderVars(); });
   $("tab-active").addEventListener("click", () => setView("active"));
   $("tab-low").addEventListener("click", () => setView("low"));
   $("tab-archived").addEventListener("click", () => setView("archived"));
@@ -347,3 +526,6 @@ textarea{min-height:90px;resize:vertical}
 </script>
 </body>
 </html>
+  
+
+        
