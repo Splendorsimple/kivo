@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select(
-        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order), inventory(quantity, reserved_quantity, variant_id)"
+        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order), inventory(quantity, reserved_quantity, variant_id), product_variants(id, name, options, price_ngn, is_active, sort_order)"
       )
       .eq("store_id", store.id)
       .eq("status", "published")
@@ -113,6 +113,27 @@ module.exports = async function handler(req, res) {
         : 20;
       const maxQty = Math.min(free, 20);
 
+      // Optional options such as size or colour, each with its own price and stock.
+      const variants = (product.product_variants || [])
+        .filter((v) => v.is_active)
+        .slice()
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((v) => {
+          const row = (product.inventory || []).find((r) => r.variant_id === v.id);
+          const vFree = product.track_inventory && row
+            ? Math.max(0, row.quantity - (row.reserved_quantity || 0))
+            : 20;
+          const vMax = Math.min(vFree, 20);
+          return {
+            id: v.id,
+            name: v.name,
+            options: v.options || {},
+            price_ngn: v.price_ngn != null ? v.price_ngn : product.price_ngn,
+            in_stock: vMax > 0,
+            max_qty: vMax
+          };
+        });
+
       return {
         id: product.id,
         name: product.name,
@@ -121,8 +142,10 @@ module.exports = async function handler(req, res) {
         price_ngn: product.price_ngn,
         compare_at_price_ngn: product.compare_at_price_ngn,
         images,
-        in_stock: maxQty > 0,
-        max_qty: maxQty
+        has_variants: variants.length > 0,
+        variants,
+        in_stock: variants.length ? variants.some((v) => v.in_stock) : maxQty > 0,
+        max_qty: variants.length ? Math.max.apply(null, variants.map((v) => v.max_qty)) : maxQty
       };
     });
 
@@ -230,4 +253,3 @@ module.exports = async function handler(req, res) {
     });
   }
 };
-        
