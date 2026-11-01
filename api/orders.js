@@ -51,11 +51,15 @@ module.exports = async function handler(req, res) {
   const rawItems = Array.isArray(body.items) ? body.items.slice(0, 30) : [];
   for (const item of rawItems) {
     const id = item && item.product_id;
+    const vid = item && item.variant_id ? item.variant_id : "";
     const qty = item && Number(item.quantity);
-    if (typeof id !== "string" || !UUID.test(id) || !Number.isInteger(qty) || qty < 1 || qty > 20) {
+    if (typeof id !== "string" || !UUID.test(id) || (vid && (typeof vid !== "string" || !UUID.test(vid))) || !Number.isInteger(qty) || qty < 1 || qty > 20) {
       return fail(res, 400, "Your cart has an invalid item.");
     }
-    wanted.set(id, Math.min(20, (wanted.get(id) || 0) + qty));
+    const key = id + ":" + vid;
+    const entry = wanted.get(key) || { product_id: id, variant_id: vid || null, qty: 0 };
+    entry.qty = Math.min(20, entry.qty + qty);
+    wanted.set(key, entry);
   }
   if (!wanted.size) return fail(res, 400, "Your cart is empty.");
 
@@ -114,7 +118,8 @@ module.exports = async function handler(req, res) {
     }
 
     // Prices and availability always come from the database.
-    const ids = Array.from(wanted.keys());
+    const entries = Array.from(wanted.values());
+    const ids = Array.from(new Set(entries.map((e) => e.product_id)));
     const { data: products, error: productError } = await supabase
       .from("products").select("id, name, price_ngn, track_inventory")
       .eq("store_id", store.id).eq("status", "published").in("id", ids);
@@ -123,23 +128,37 @@ module.exports = async function handler(req, res) {
       return fail(res, 409, "Some items in your cart are no longer available.");
     }
 
+    const { data: variantRows, error: variantError } = await supabase
+      .from("product_variants").select("id, product_id, name, price_ngn").in("product_id", ids).eq("is_active", true);
+    if (variantError) throw variantError;
+
     const { data: stock, error: stockError } = await supabase
       .from("inventory").select("product_id, quantity, reserved_quantity, variant_id").in("product_id", ids);
     if (stockError) throw stockError;
 
     const lines = [];
     let subtotal = 0;
-    for (const p of products) {
-      const qty = wanted.get(p.id);
-      const row = (stock || []).find((r) => r.product_id === p.id && !r.variant_id);
+    for (const e of entries) {
+      const p = products.find((x) => x.id === e.product_id);
+      const options = (variantRows || []).filter((v) => v.product_id === p.id);
+      let v = null;
+      if (options.length) {
+        v = options.find((o) => o.id === e.variant_id);
+        if (!v) return fail(res, 409, "Please choose an option for " + p.name + ".");
+      } else if (e.variant_id) {
+        return fail(res, 409, "Some items in your cart are no longer available.");
+      }
+      const label = p.name + (v ? " (" + v.name + ")" : "");
+      const row = (stock || []).find((r) => r.product_id === p.id && (v ? r.variant_id === v.id : !r.variant_id));
       // Stock already held for confirmed orders is not available to new customers.
       const free = row ? Math.max(0, row.quantity - (row.reserved_quantity || 0)) : 0;
-      if (p.track_inventory && row && free < qty) {
-        return fail(res, 409, free > 0 ? p.name + " only has " + free + " left in stock." : p.name + " is out of stock.");
+      if (p.track_inventory && row && free < e.qty) {
+        return fail(res, 409, free > 0 ? label + " only has " + free + " left in stock." : label + " is out of stock.");
       }
-      const lineTotal = Number(p.price_ngn) * qty;
+      const unit = Number(v && v.price_ngn != null ? v.price_ngn : p.price_ngn);
+      const lineTotal = unit * e.qty;
       subtotal += lineTotal;
-      lines.push({ p, qty, lineTotal });
+      lines.push({ p, v, qty: e.qty, unit, label, lineTotal });
     }
 
     const { data: customer, error: customerError } = await supabase
@@ -180,7 +199,9 @@ module.exports = async function handler(req, res) {
         store_id: store.id,
         product_id: l.p.id,
         product_name: l.p.name,
-        unit_price_ngn: Number(l.p.price_ngn),
+        variant_id: l.v ? l.v.id : null,
+        variant_name: l.v ? l.v.name : null,
+        unit_price_ngn: l.unit,
         quantity: l.qty,
         discount_ngn: 0,
         line_total_ngn: l.lineTotal
@@ -189,19 +210,21 @@ module.exports = async function handler(req, res) {
     if (itemsError) throw itemsError;
 
     const trackLink = trackUrl(originOf(req), slug, order.order_number, trackKey(serviceRoleKey, order.id));
+    const docLink = trackLink.replace("/t/", "/i/");
     let whatsappUrl = null;
     const wa = waNumber;
 
     if (wa) {
       const message =
         "Hi " + store.name + (["bank_transfer", "online"].includes(method.type) ? ", I have paid for order " : ", I just placed order ") + order.order_number + ":\n" +
-        lines.map((l) => "- " + l.qty + " x " + l.p.name + " (" + money(l.lineTotal) + ")").join("\n") +
+        lines.map((l) => "- " + l.qty + " x " + l.label + " (" + money(l.lineTotal) + ")").join("\n") +
         "\nTotal: " + money(subtotal) + "\nPayment: " + method.label +
         "\nName: " + name + "\nPhone: " + phone +
         "\nAddress: " + address + ", " + city +
         (note ? "\nNote: " + note : "") +
         (["bank_transfer", "online"].includes(method.type) ? "\nI will attach my payment receipt here." : "") +
-        "\nTrack this order: " + trackLink;
+        "\nTrack this order: " + trackLink +
+        "\nInvoice: " + docLink;
       whatsappUrl = "https://wa.me/" + wa + "?text=" + encodeURIComponent(message);
     }
 
@@ -210,6 +233,7 @@ module.exports = async function handler(req, res) {
       order_number: order.order_number,
       claim_token: claimToken,
       track_url: trackLink,
+      doc_url: docLink,
       total_ngn: subtotal,
       payment: { type: method.type, label: method.label, details: paymentDetails(method) },
       whatsapp_url: whatsappUrl
@@ -228,3 +252,4 @@ module.exports = async function handler(req, res) {
     return fail(res, 500, "We could not place your order. Please try again.");
   }
 };
+           
