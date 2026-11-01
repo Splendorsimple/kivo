@@ -76,6 +76,7 @@ h2{font-size:16px;margin:0 0 4px}
       '<div class="card"><h2>Your items</h2>' + o.items.map((i) => '<div class="item"><span>' + esc(i.quantity) + ' × ' + esc(i.name) + '</span></div>').join("") +
       '<div class="item" style="border-top:1px solid #ece9f2;margin-top:6px;padding-top:10px"><b>Total</b><b>' + money(o.total_ngn) + '</b></div></div>' +
       (d.whatsapp ? '<a class="btn" href="https://wa.me/' + esc(d.whatsapp) + '?text=' + encodeURIComponent("Hi, I'm checking on my order " + o.order_number + ".") + '" target="_blank" rel="noopener">Message the seller on WhatsApp</a>' : "") +
+      '<a class="btn alt" href="/i/' + encodeURIComponent(slug) + esc(location.search) + '">' + (paid ? "View receipt" : "View invoice") + '</a>' +
       '<button class="btn alt" id="refresh" type="button">Refresh status</button>' +
       '<div class="foot">Powered by <a href="/">Kivo</a></div>';
     document.getElementById("refresh").addEventListener("click", load);
@@ -99,3 +100,4 @@ h2{font-size:16px;margin:0 0 4px}
 </script>
 </body>
 </html>
+
