@@ -41,6 +41,10 @@ textarea.f{min-height:60px;resize:vertical}
 .msg{color:var(--mut);font-size:13px;margin:8px 0 0}
 .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;z-index:20;max-width:90%}
 .tag.low{background:#fff3df;color:#a65f00}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.optb{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;cursor:pointer;font:inherit;font-weight:500}
+.optb.on{border-color:var(--p);background:var(--pl);color:var(--p)}
+.optb:disabled{opacity:.45;text-decoration:line-through;cursor:default}
 .tag{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fdecef;color:#b4233c}
 .car{position:relative;aspect-ratio:1;background:var(--pl)}
 .track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
@@ -115,7 +119,15 @@ textarea.f{min-height:60px;resize:vertical}
   }
 
   const digits = (v) => String(v || "").replace(/\D/g, "");
-  const priceHtml = (p) => '<span class="price">' + money(p.price_ngn) + '</span>' + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : "");
+  const priceHtml = (p) => {
+    if (p.has_variants) {
+      const open = p.variants.filter((v) => v.in_stock).map((v) => v.price_ngn);
+      const prices = open.length ? open : p.variants.map((v) => v.price_ngn);
+      const lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
+      return '<span class="price">' + (lo !== hi ? "From " : "") + money(lo) + '</span>';
+    }
+    return '<span class="price">' + money(p.price_ngn) + '</span>' + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : "");
+  };
 
   function render() {
     const initial = (store.name || "K").trim().charAt(0).toUpperCase();
@@ -129,21 +141,38 @@ textarea.f{min-height:60px;resize:vertical}
       (store.description ? '<p class="about">' + esc(store.description) + '</p>' : "") +
       (chips.length ? '<div class="chips">' + chips.join("") + '</div>' : "") +
       (products.length ? '<div class="grid">' + products.map((p, i) =>
-        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? (p.max_qty <= 5 ? '<span class="tag low">Only ' + p.max_qty + ' left</span>' : "") + '<button class="buy" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
+        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.in_stock ? (!p.has_variants && p.max_qty <= 5 ? '<span class="tag low">Only ' + p.max_qty + ' left</span>' : "") + '<button class="buy" type="button">' + (p.has_variants ? "Choose options" : "Add to cart") + '</button>' : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
         : '<p class="center">No products yet. Check back soon.</p>') +
       '<div class="foot">Powered by <a href="/">Kivo</a></div></div>';
     initCarousels(root);
-    root.querySelectorAll(".card").forEach((card, i) => card.addEventListener("click", (e) => { if (e.target.closest(".nav")) return; if (e.target.closest(".buy")) { add(products[i].id); return; } openSheet(products[i]); }));
+    root.querySelectorAll(".card").forEach((card, i) => card.addEventListener("click", (e) => { if (e.target.closest(".nav")) return; if (e.target.closest(".buy")) { if (products[i].has_variants) openSheet(products[i]); else add(products[i].id); return; } openSheet(products[i]); }));
   }
 
   function openSheet(p) {
-    const order = p.in_stock ? (p.max_qty <= 5 ? '<p class="msg" style="color:#a65f00;margin:0 0 8px">Only ' + p.max_qty + ' left in stock</p>' : "") + '<button class="btn pur" id="addcart" type="button">Add to cart</button>' : '<span class="tag">Out of stock</span>';
-    $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button>' + carousel(p) +
-      '<div class="pad"><h2>' + esc(p.name) + '</h2><div>' + priceHtml(p) + '</div>' +
-      (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : "") + order + '</div>';
-    initCarousels($("panel"));
-    $("close").addEventListener("click", closeSheet);
-    if ($("addcart")) $("addcart").addEventListener("click", () => { add(p.id); closeSheet(); });
+    let sel = null; // the option the customer has chosen, if this product has options
+    const body = () => {
+      if (!p.in_stock) return '<span class="tag">Out of stock</span>';
+      let h = "";
+      if (p.has_variants) {
+        h += '<p class="msg" style="margin:10px 0 6px"><b>Choose an option</b></p><div class="opts">' +
+          p.variants.map((v) => '<button type="button" class="optb' + (sel && sel.id === v.id ? " on" : "") + '" data-v="' + v.id + '"' + (v.in_stock ? "" : " disabled") + '>' + esc(v.name) + (v.in_stock ? "" : " (sold out)") + '</button>').join("") + '</div>';
+      }
+      const max = p.has_variants ? (sel ? sel.max_qty : null) : p.max_qty;
+      if (max != null && max <= 5) h += '<p class="msg" style="color:#a65f00;margin:8px 0">Only ' + max + ' left in stock</p>';
+      const need = p.has_variants && !sel;
+      h += '<button class="btn pur" id="addcart" type="button"' + (need ? " disabled" : "") + '>' + (need ? "Select an option" : "Add to cart") + '</button>';
+      return h;
+    };
+    const paint = () => {
+      $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button>' + carousel(p) +
+        '<div class="pad"><h2>' + esc(p.name) + '</h2><div>' + (sel ? '<span class="price">' + money(sel.price_ngn) + '</span>' : priceHtml(p)) + '</div>' +
+        (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : "") + body() + '</div>';
+      initCarousels($("panel"));
+      $("close").addEventListener("click", closeSheet);
+      $("panel").querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", () => { sel = p.variants.find((v) => v.id === b.dataset.v); paint(); }));
+      if ($("addcart")) $("addcart").addEventListener("click", () => { add(keyOf(p.id, sel ? sel.id : null)); closeSheet(); });
+    };
+    paint();
     showSheet();
   }
   function showSheet() { $("sheet").classList.remove("hidden"); document.body.style.overflow = "hidden"; }
@@ -153,15 +182,27 @@ textarea.f{min-height:60px;resize:vertical}
   let cart = {}, tt;
   try { cart = JSON.parse(localStorage.getItem(CART_KEY) || "{}") || {}; } catch (e) { cart = {}; }
   const saveCart = () => { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {} paintBar(); };
-  const lines = () => Object.keys(cart).map((id) => ({ p: products.find((x) => x.id === id), q: cart[id] })).filter((l) => l.p && l.p.in_stock);
-  const cartTotal = () => lines().reduce((t, l) => t + l.p.price_ngn * l.q, 0);
+  // A cart key is the product id, or "productId|optionId" for products with options.
+  const keyOf = (pid, vid) => pid + (vid ? "|" + vid : "");
+  const splitKey = (k) => { const a = k.split("|"); return { pid: a[0], vid: a[1] || null }; };
+  const lines = () => Object.keys(cart).map((k) => {
+    const sk = splitKey(k), p = products.find((x) => x.id === sk.pid);
+    const v = p && sk.vid ? (p.variants || []).find((x) => x.id === sk.vid) || null : null;
+    return { k, p, v, q: cart[k], u: p ? (v ? v.price_ngn : p.price_ngn) : 0, mx: maxOf(k) };
+  }).filter((l) => l.p && l.mx > 0);
+  const cartTotal = () => lines().reduce((t, l) => t + l.u * l.q, 0);
   function toast(m) { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 2500); }
   function paintBar() {
     const n = lines().reduce((t, l) => t + l.q, 0);
     $("cartbar").classList.toggle("hidden", !n);
     $("opencart").textContent = "View cart (" + n + ") · " + money(cartTotal());
   }
-  const maxOf = (id) => { const p = products.find((x) => x.id === id); return p ? p.max_qty : 0; };
+  const maxOf = (k) => {
+    const sk = splitKey(k), p = products.find((x) => x.id === sk.pid);
+    if (!p) return 0;
+    if (p.has_variants) { const v = (p.variants || []).find((x) => x.id === sk.vid); return v ? v.max_qty : 0; }
+    return sk.vid ? 0 : p.max_qty;
+  };
   function add(id) {
     const max = maxOf(id), have = cart[id] || 0;
     if (have >= max) return toast(max > 0 ? "Only " + max + " available." : "Sorry, this item is out of stock.");
@@ -217,7 +258,7 @@ textarea.f{min-height:60px;resize:vertical}
       : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>';
     return '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Order placed ✓</h2>' +
       '<p>Your order number is <b>' + ref + '</b> (' + money(data.total_ngn) + ').</p>' + how + wa + tail +
-      (data.track_url ? '<p class="msg" style="margin-top:14px">Follow your order any time: <a href="' + esc(data.track_url) + '" style="color:#6d28d9;font-weight:700">Track my order</a>. The seller will also keep you updated on WhatsApp.</p>' : "") + '</div>';
+      (data.doc_url ? '<a class="btn pur" href="' + esc(data.doc_url) + '" target="_blank" rel="noopener">View your invoice</a>' : "") + (data.track_url ? '<p class="msg" style="margin-top:14px">Follow your order any time: <a href="' + esc(data.track_url) + '" style="color:#6d28d9;font-weight:700">Track my order</a>. The seller will also keep you updated on WhatsApp.</p>' : "") + '</div>';
   }
 
   function openCart() {
@@ -226,13 +267,13 @@ textarea.f{min-height:60px;resize:vertical}
       $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2><p class="msg">Your cart is empty.</p></div>';
     } else {
       $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2>' +
-        ls.map((l) => '<div class="row2"><div style="flex:1"><b>' + esc(l.p.name) + '</b><div class="msg" style="margin:2px 0 0">' + money(l.p.price_ngn) + (l.p.max_qty <= 5 ? " · only " + l.p.max_qty + " available" : "") + '</div></div><div class="qty"><button data-m="' + l.p.id + '" type="button" aria-label="Less">−</button><span>' + l.q + '</span><button data-a="' + l.p.id + '" type="button" aria-label="More"' + (l.q >= l.p.max_qty ? ' disabled style="opacity:.4"' : "") + '>+</button></div></div>').join("") +
+        ls.map((l) => '<div class="row2"><div style="flex:1"><b>' + esc(l.p.name) + '</b>' + (l.v ? '<div class="msg" style="margin:2px 0 0">' + esc(l.v.name) + '</div>' : "") + '<div class="msg" style="margin:2px 0 0">' + money(l.u) + (l.mx <= 5 ? " · only " + l.mx + " available" : "") + '</div></div><div class="qty"><button data-m="' + l.k + '" type="button" aria-label="Less">−</button><span>' + l.q + '</span><button data-a="' + l.k + '" type="button" aria-label="More"' + (l.q >= l.mx ? ' disabled style="opacity:.4"' : "") + '>+</button></div></div>').join("") +
         '<p class="price" style="margin:14px 0 4px">Total: ' + money(cartTotal()) + '</p>' +
         '<input class="f" id="cn" type="text" placeholder="Your name" maxlength="100" autocomplete="name">' +
         '<input class="f" id="cp" type="tel" placeholder="Phone number" maxlength="30" autocomplete="tel">' +
         '<input class="f" id="ca" type="text" placeholder="Delivery address" maxlength="300" autocomplete="street-address">' +
         '<input class="f" id="cc" type="text" placeholder="City" maxlength="80" autocomplete="address-level2">' +
-        '<textarea class="f" id="cnote" placeholder="Note to the seller (optional)" maxlength="500"></textarea>' +
+                '<textarea class="f" id="cnote" placeholder="Note to the seller (optional)" maxlength="500"></textarea>' +
         '<input id="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0">' +
         payOptions() +
         '<button class="btn" id="place" type="button">Place order</button>' +
@@ -252,7 +293,7 @@ textarea.f{min-height:60px;resize:vertical}
       const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
       const res = await fetch("/api/orders", {
         method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, website: $("hp").value, items: lines().map((l) => ({ product_id: l.p.id, quantity: l.q })),
+        body: JSON.stringify({ slug, website: $("hp").value, items: lines().map((l) => ({ product_id: l.p.id, variant_id: l.v ? l.v.id : null, quantity: l.q })),
           payment_method_id: (document.querySelector("input[name=pay]:checked") || {}).value || "", customer: { name: $("cn").value, phone: $("cp").value, address: $("ca").value, city: $("cc").value, note: $("cnote").value } })
       });
       clearTimeout(timer);
@@ -270,7 +311,7 @@ textarea.f{min-height:60px;resize:vertical}
       });
       $("close").addEventListener("click", closeSheet);
     } catch (e) {
-            toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
+      toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
       btn.disabled = false; btn.textContent = "Place order";
     }
   }
