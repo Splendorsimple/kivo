@@ -97,6 +97,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
   }
 
   function updateText(o, link) {
+    const docLink = link ? link.replace("/t/", "/i/") : "";
     const a = o.shipping_address || {}, first = String(a.name || "").trim().split(" ")[0] || "there";
     const ref = o.order_number, paid = o.payment_status === "paid", s = o.order_status;
     let t;
@@ -108,7 +109,12 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
     else if (s === "confirmed") t = "your order " + ref + " is confirmed" + (paid ? " and your payment has been received." : ".");
     else t = paid ? "we have received your payment for order " + ref + ". We will confirm it shortly."
       : "we have received your order " + ref + (o.payment_status === "pending" ? " and we are checking your payment." : ". We are waiting for your payment.");
-    return "Hi " + first + ", " + t + (link ? "\n\nTrack your order any time: " + link : "");
+    return "Hi " + first + ", " + t + (link ? "\n\nTrack your order any time: " + link : "") + (docLink ? "\n" + (paid ? "Your receipt: " : "Your invoice: ") + docLink : "");
+  }
+
+  function docText(o, link) {
+    const a = o.shipping_address || {}, first = String(a.name || "").trim().split(" ")[0] || "there";
+    return "Hi " + first + ", here is your " + (o.payment_status === "paid" ? "receipt" : "invoice") + " for order " + o.order_number + " (" + money(o.total_ngn) + ")." + (link ? "\n\n" + link : "");
   }
 
   async function load() {
@@ -119,7 +125,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
     }
     if (!store) { $("main").innerHTML = '<p class="empty">Create your store first, then orders will appear here.</p>'; return; }
     const r = await C.from("orders")
-      .select("id,order_number,order_status,payment_status,payment_method,total_ngn,created_at,shipping_address,customer_note,customers(full_name,phone),order_items(product_name,quantity,line_total_ngn)")
+      .select("id,order_number,order_status,payment_status,payment_method,total_ngn,created_at,shipping_address,customer_note,customers(full_name,phone),order_items(product_name,variant_name,quantity,line_total_ngn)")
       .eq("store_id", store.id).order("created_at", { ascending: false }).limit(100);
     if (r.error) throw r.error;
     orders = r.data;
@@ -139,7 +145,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
     const n = needPay ? null : NEXT[o.order_status], canPay = (o.payment_status === "unpaid" || o.payment_status === "pending") && !["cancelled", "refunded"].includes(o.order_status);
     const canCancel = ["pending", "confirmed", "processing"].includes(o.order_status);
     return '<div class="det"><h3>Items</h3>' +
-      (o.order_items || []).map((i) => '<div class="item"><span>' + esc(i.quantity) + ' × ' + esc(i.product_name) + '</span><span>' + money(i.line_total_ngn) + '</span></div>').join("") +
+      (o.order_items || []).map((i) => '<div class="item"><span>' + esc(i.quantity) + ' × ' + esc(i.product_name) + (i.variant_name ? ' (' + esc(i.variant_name) + ')' : '') + '</span><span>' + money(i.line_total_ngn) + '</span></div>').join("") +
       '<div class="item"><b>Total</b><b>' + money(o.total_ngn) + '</b></div>' +
       '<h3>Customer</h3><p>' + esc(a.name || c.full_name || "") + '</p>' +
       (phone ? '<p><a href="tel:' + esc(phone.replace(/[^\d+]/g, "")) + '">' + esc(phone) + '</a> · <a href="https://wa.me/' + waNumber(phone) + '" target="_blank" rel="noopener">WhatsApp</a></p>' : "") +
@@ -147,7 +153,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       (o.customer_note ? '<h3>Note</h3><p>' + esc(o.customer_note) + '</p>' : "") +
       '<h3>Payment</h3><p>' + esc(METHOD[o.payment_method] || "Not chosen") + '</p>' +
       (needPay && canPay ? '<p class="mut">' + (o.payment_status === "pending" ? "The customer says they have paid. " : "") + 'Check your bank app or payment account for ' + money(o.total_ngn) + ' with reference ' + esc(o.order_number) + '. Once it has arrived, tap Mark as paid. You can then confirm and ship the order.</p>' : "") +
-      (phone ? '<h3>Keep the customer updated</h3><a class="btn wa" href="https://wa.me/' + waNumber(phone) + '?text=' + encodeURIComponent(updateText(o, links[o.id])) + '" target="_blank" rel="noopener">Update customer on WhatsApp</a><p class="mut" style="margin-top:6px">Opens WhatsApp with a ready message for the current status. Just press send.</p>' : "") +
+      (phone ? '<h3>Keep the customer updated</h3><a class="btn wa" href="https://wa.me/' + waNumber(phone) + '?text=' + encodeURIComponent(updateText(o, links[o.id])) + '" target="_blank" rel="noopener">Update customer on WhatsApp</a><p class="mut" style="margin-top:6px">Opens WhatsApp with a ready message for the current status. Just press send.</p>' + (links[o.id] ? '<a class="btn wa" style="margin-top:10px;background:#6d28d9" href="https://wa.me/' + waNumber(phone) + '?text=' + encodeURIComponent(docText(o, links[o.id].replace("/t/", "/i/"))) + '" target="_blank" rel="noopener">Send ' + (o.payment_status === "paid" ? "receipt" : "invoice") + ' on WhatsApp</a><p class="mut" style="margin-top:6px"><a href="' + esc(links[o.id].replace("/t/", "/i/")) + '" target="_blank" rel="noopener">Preview ' + (o.payment_status === "paid" ? "receipt" : "invoice") + '</a></p>' : "") : "") +
       '<div class="acts">' +
       (needPay && canPay ? '<button class="btn" data-a="mark_paid" data-id="' + o.id + '" type="button">Mark as paid</button>' : "") +
       (n ? '<button class="btn" data-a="' + n[0] + '" data-id="' + o.id + '" type="button">' + n[1] + '</button>' : "") +
@@ -184,7 +190,7 @@ main{max-width:720px;margin:0 auto;padding:16px 20px;display:flex;flex-direction
       clearTimeout(timer);
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "That did not work.");
-      await load(); toast("Order updated. Tap Update customer on WhatsApp to let them know.");
+      await load(); toast(action === "mark_paid" ? "Marked as paid. Tap Send receipt on WhatsApp to give the customer their receipt." : "Order updated. Tap Update customer on WhatsApp to let them know.");
     } catch (e) { toast(e.name === "AbortError" ? "That took too long. Try again." : e.message); btn.disabled = false; }
   }
 
