@@ -90,9 +90,12 @@ module.exports = async function handler(req, res) {
 
   try {
     const { data: store, error: storeError } = await supabase
-      .from("stores").select("id, name").eq("slug", slug).eq("status", "published").maybeSingle();
+      .from("stores").select("id, name, owner_id").eq("slug", slug).eq("status", "published").maybeSingle();
     if (storeError) throw storeError;
     if (!store) return fail(res, 404, "This store is not open right now.");
+        // A store whose plan has expired is paused and takes no new orders.
+    const { data: live } = await supabase.rpc("seller_plan_is_live", { p_user: store.owner_id });
+    if (live === false) return fail(res, 409, "This store is not taking orders right now.");
 
     // Payment options come from the seller's saved settings, never the browser.
     const { data: settingsRow } = await supabase
