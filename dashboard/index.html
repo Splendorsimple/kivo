@@ -502,7 +502,8 @@
   </section>
 </main>
 
-  </div>  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  <script>
+  </div> <div class="lockscreen hidden" id="lockscreen"><div class="lockcard"><h2>Your plan has ended</h2><p id="lock-text"></p><button id="lock-renew" type="button">Renew</button><button class="plain" id="lock-signout" type="button">Sign out</button></div></div>
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  <script>
     (async function initialiseKivoDashboard() {
       "use strict";
 
@@ -779,7 +780,83 @@
         document.getElementById("avatar").textContent =
           name.trim().charAt(0).toUpperCase() || "K";
       }
+            // ---- Plan status: warnings before the end, 1 grace day, then a lock ----
+      function planMessage(ms) {
+        const DAY = 86400000, days = Math.ceil(ms / DAY);
+        if (ms <= 0) return { urgent: true, text: "Your plan has ended. Renew within " + Math.max(1, Math.ceil((ms + DAY) / 3600000)) + " hours or your store will be paused." };
+        if (ms <= DAY) return { urgent: true, text: "Your plan ends today. Renew now to keep your store open." };
+        if (ms <= 3 * DAY) return { urgent: true, text: "Your plan ends in " + days + " days. Renew to keep your store open." };
+        if (ms <= 7 * DAY) return { urgent: false, text: "Your plan ends in " + days + " days. Renew now and keep every day you have paid for." };
+        return null;
+      }
 
+      async function loadPlanState(session) {
+        try {
+          const cols = "plan_code,billing_interval,status,current_period_end";
+          let r = await client.from("subscriptions").select(cols).eq("user_id", session.user.id)
+            .in("status", ["active", "trialing", "past_due"]).order("current_period_end", { ascending: false }).limit(1);
+          let sub = r.data && r.data[0], expired = false;
+          if (!sub) {
+            r = await client.from("subscriptions").select(cols).eq("user_id", session.user.id)
+              .eq("status", "expired").order("current_period_end", { ascending: false }).limit(1);
+            sub = r.data && r.data[0];
+            if (!sub) return null; // never subscribed
+            expired = true;
+          }
+          const ms = new Date(sub.current_period_end).getTime() - Date.now();
+          const locked = expired || ms + 86400000 <= 0;
+          const p = await client.from("plans").select("name,monthly_price_ngn,annual_price_ngn").eq("code", sub.plan_code).maybeSingle();
+          const price = p.data ? (sub.billing_interval === "annual" ? p.data.annual_price_ngn : p.data.monthly_price_ngn) : null;
+          return { sub, ms, locked, planName: p.data ? p.data.name : sub.plan_code, price };
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function renewPlan(plan, btn) {
+        btn.disabled = true;
+        try {
+          const { data: { session } } = await client.auth.getSession();
+          const response = await fetchWithTimeout("/api/billing-verify", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + session.access_token, "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ plan_code: plan.sub.plan_code, billing_interval: plan.sub.billing_interval }),
+            cache: "no-store"
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success || typeof result.authorization_url !== "string" || !result.authorization_url.startsWith("https://")) {
+            throw new Error(result.error || "We couldn't start checkout. Please try again.");
+          }
+          location.href = result.authorization_url;
+        } catch (e) {
+          showToast(e.message || "We couldn't start checkout.");
+          btn.disabled = false;
+        }
+      }
+
+      function paintPlan(plan) {
+        if (!plan) return;
+        const label = plan.price != null ? "Renew " + plan.planName + " (₦" + Number(plan.price).toLocaleString("en-NG") + ")" : "Renew plan";
+
+        if (plan.locked) {
+          document.getElementById("lock-text").textContent = "Your " + plan.planName + " plan has ended. Your store is paused, and you can't manage orders or products until you renew.";
+          const lockBtn = document.getElementById("lock-renew");
+          lockBtn.textContent = label;
+          lockBtn.onclick = () => renewPlan(plan, lockBtn);
+          document.getElementById("lock-signout").onclick = async () => { await client.auth.signOut(); location.replace(LOGIN_URL); };
+          document.getElementById("lockscreen").classList.remove("hidden");
+          return;
+        }
+
+        const msg = planMessage(plan.ms);
+        if (!msg) return;
+        const bar = document.getElementById("plan-banner"), btn = document.getElementById("plan-renew");
+        document.getElementById("plan-text").textContent = msg.text;
+        bar.classList.toggle("urgent", msg.urgent);
+        btn.textContent = "Renew";
+        btn.onclick = () => renewPlan(plan, btn);
+        bar.classList.remove("hidden");
+      }
       async function start() {
         if (
           !window.supabase ||
@@ -861,9 +938,10 @@
 
         if (billing && billing.redirecting) return;
 
+                const plan = await loadPlanState(session);
         loading.classList.add("hidden");
         app.classList.remove("hidden");
-
+        paintPlan(plan);
         if (billing && billing.message) showToast(billing.message);
 
         // Store link box and the "new orders" badge. This runs after the
