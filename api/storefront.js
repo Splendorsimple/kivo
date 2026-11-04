@@ -67,6 +67,25 @@ module.exports = async function handler(req, res) {
         error: "Store not found."
       });
     }
+        // A seller whose plan has expired has their store paused.
+    const { data: ownerRow } = await supabase
+      .from("stores")
+      .select("owner_id")
+      .eq("id", store.id)
+      .maybeSingle();
+
+    if (ownerRow) {
+      const { data: live } = await supabase.rpc("seller_plan_is_live", {
+        p_user: ownerRow.owner_id
+      });
+
+      if (live === false) {
+        return res.status(404).json({
+          success: false,
+          error: "This store is temporarily unavailable."
+        });
+      }
+    }
 
     const { data: products, error: productsError } = await supabase
       .from("products")
