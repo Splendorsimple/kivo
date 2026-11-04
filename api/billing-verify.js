@@ -102,7 +102,7 @@ module.exports = async function handler(req, res) {
     const { data: currentSubscription, error: currentError } =
       await supabase
         .from("subscriptions")
-        .select("id, plan_code, status")
+        .select("id, plan_code, status, current_period_end")
         .eq("user_id", user.id)
         .in("status", ["active", "trialing", "past_due"])
         .limit(1)
@@ -117,13 +117,22 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (currentSubscription) {
+        // Renewing is allowed in the last 7 days of a plan (and after it ends).
+    // The new period starts where the old one ends, so no days are lost.
+    if (
+      currentSubscription &&
+      currentSubscription.current_period_end &&
+      new Date(currentSubscription.current_period_end).getTime() - Date.now() >
+        7 * 24 * 60 * 60 * 1000
+    ) {
       return res.status(409).json({
         success: false,
         error:
-          "You already have an active " +
+          "Your " +
           currentSubscription.plan_code +
-          " subscription. Plan changes are not available yet."
+          " plan is active until " +
+          new Date(currentSubscription.current_period_end).toLocaleDateString("en-NG", { dateStyle: "long" }) +
+          ". You can renew in the last 7 days."
       });
     }
 
