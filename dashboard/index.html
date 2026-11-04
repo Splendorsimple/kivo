@@ -362,6 +362,16 @@
     .linkacts #share-store { background: #25d366; color: white; }
     .linknote { margin: 10px 0 0; color: #a65f00; font-size: 13px; }
     .linknote:empty { display: none; }
+    .planbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 16px; border-radius: var(--radius); background: #fff7e6; border: 1px solid #f6dfae; color: #6b4a00; font-weight: 500; }
+    .planbar.urgent { background: #fdecef; border-color: #f3c3cc; color: #b4233d; }
+    .planbar button { border: 0; border-radius: 9px; padding: 10px 14px; background: var(--purple); color: white; font-weight: 700; }
+
+    .lockscreen { position: fixed; inset: 0; z-index: 50; background: rgba(248, 247, 252, 0.97); display: grid; place-items: center; padding: 24px; }
+    .lockcard { max-width: 420px; width: 100%; background: white; border: 1px solid var(--line); border-radius: 18px; padding: 28px; text-align: center; }
+    .lockcard h2 { margin: 0 0 10px; font: 800 22px "Manrope", sans-serif; }
+    .lockcard p { color: var(--muted); line-height: 1.6; margin: 0 0 18px; }
+    .lockcard button { width: 100%; padding: 14px; border: 0; border-radius: 10px; background: var(--purple); color: white; font-weight: 700; }
+    .lockcard .plain { margin-top: 10px; background: white; color: #b4233d; border: 1px solid var(--line); }
   </style></head><body>
   <div id="auth-loading" class="loading-screen">
     <div class="loading-card">
@@ -427,6 +437,7 @@
   </header>
 
   <section class="content">
+        <div class="planbar hidden" id="plan-banner"><span id="plan-text"></span><button id="plan-renew" type="button">Renew</button></div>
     <div class="welcome">
       <h2 id="welcome-title">Welcome to Kivo</h2>
       <p>Your business workspace is ready. Use the navigation to access your seller tools.</p>
