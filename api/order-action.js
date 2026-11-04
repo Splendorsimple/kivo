@@ -42,6 +42,9 @@ module.exports = async function handler(req, res) {
       .from("stores").select("owner_id").eq("id", order.store_id).maybeSingle();
     if (storeError) throw storeError;
     if (!store || store.owner_id !== auth.user.id) return fail(res, 403, "You cannot manage this order.");
+        // Once the plan has expired (after the 1-day grace), orders can no longer be managed.
+    const { data: live } = await supabase.rpc("seller_plan_is_live", { p_user: auth.user.id });
+    if (live === false) return fail(res, 403, "Your plan has expired. Renew to manage your orders.");
 
     // Bank transfers and online links are prepaid: the seller must verify
     // the money first, then approve the order.
