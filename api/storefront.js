@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select(
-        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order), inventory(quantity, reserved_quantity, variant_id), product_variants(id, name, options, price_ngn, is_active, sort_order)"
+        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order, option_value)
       )
       .eq("store_id", store.id)
       .eq("status", "published")
@@ -107,18 +107,20 @@ module.exports = async function handler(req, res) {
       "/storage/v1/object/public/product-images/";
 
     const publicProducts = (products || []).map((product) => {
-      const images = (product.product_images || [])
+            const sortedImages = (product.product_images || [])
         .slice()
         .sort(
           (a, b) =>
             Number(b.is_primary) - Number(a.is_primary) ||
             a.sort_order - b.sort_order
-        )
-        .map(
-          (image) =>
-            imageBase +
-            image.storage_path.split("/").map(encodeURIComponent).join("/")
         );
+      const images = sortedImages.map(
+        (image) =>
+          imageBase +
+          image.storage_path.split("/").map(encodeURIComponent).join("/")
+      );
+      // Which option value (for example a colour) each photo belongs to.
+      const imageTags = sortedImages.map((image) => image.option_value || null);
 
       const stockRow = (product.inventory || []).find(
         (row) => !row.variant_id
@@ -160,7 +162,8 @@ module.exports = async function handler(req, res) {
         description: product.description,
         price_ngn: product.price_ngn,
         compare_at_price_ngn: product.compare_at_price_ngn,
-        images,
+        images,         
+        image_tags: imageTags,
         has_variants: variants.length > 0,
         variants,
         in_stock: variants.length ? variants.some((v) => v.in_stock) : maxQty > 0,
