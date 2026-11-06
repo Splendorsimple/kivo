@@ -67,7 +67,8 @@ module.exports = async function handler(req, res) {
         error: "Store not found."
       });
     }
-        // A seller whose plan has expired has their store paused.
+
+    // A seller whose plan has expired has their store paused.
     const { data: ownerRow } = await supabase
       .from("stores")
       .select("owner_id")
@@ -90,7 +91,7 @@ module.exports = async function handler(req, res) {
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select(
-        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order, option_value)
+        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order, option_value), inventory(quantity, reserved_quantity, variant_id), product_variants(id, name, options, price_ngn, is_active, sort_order)"
       )
       .eq("store_id", store.id)
       .eq("status", "published")
@@ -107,7 +108,7 @@ module.exports = async function handler(req, res) {
       "/storage/v1/object/public/product-images/";
 
     const publicProducts = (products || []).map((product) => {
-            const sortedImages = (product.product_images || [])
+      const sortedImages = (product.product_images || [])
         .slice()
         .sort(
           (a, b) =>
@@ -162,7 +163,7 @@ module.exports = async function handler(req, res) {
         description: product.description,
         price_ngn: product.price_ngn,
         compare_at_price_ngn: product.compare_at_price_ngn,
-        images,         
+        images,
         image_tags: imageTags,
         has_variants: variants.length > 0,
         variants,
@@ -275,3 +276,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+        
