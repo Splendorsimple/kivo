@@ -1,4 +1,3 @@
-
 const { createClient } = require("@supabase/supabase-js");
 const { clientKey, allow, tooMany } = require("./_ratelimit");
 
@@ -91,7 +90,7 @@ module.exports = async function handler(req, res) {
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select(
-        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, product_images(storage_path, is_primary, sort_order, option_value), inventory(quantity, reserved_quantity, variant_id), product_variants(id, name, options, price_ngn, is_active, sort_order)"
+        "id, name, slug, description, price_ngn, compare_at_price_ngn, track_inventory, show_stock, product_images(storage_path, is_primary, sort_order, option_value), inventory(quantity, reserved_quantity, variant_id), product_variants(id, name, options, price_ngn, is_active, sort_order)"
       )
       .eq("store_id", store.id)
       .eq("status", "published")
@@ -146,13 +145,15 @@ module.exports = async function handler(req, res) {
             ? Math.max(0, row.quantity - (row.reserved_quantity || 0))
             : 20;
           const vMax = Math.min(vFree, 20);
+          const showCount = product.show_stock && product.track_inventory && row;
           return {
             id: v.id,
             name: v.name,
             options: v.options || {},
             price_ngn: v.price_ngn != null ? v.price_ngn : product.price_ngn,
             in_stock: vMax > 0,
-            max_qty: vMax
+            max_qty: vMax,
+            free_qty: showCount ? vFree : null
           };
         });
 
@@ -165,6 +166,12 @@ module.exports = async function handler(req, res) {
         compare_at_price_ngn: product.compare_at_price_ngn,
         images,
         image_tags: imageTags,
+        show_stock: !!product.show_stock,
+        free_qty: !product.show_stock || !product.track_inventory
+          ? null
+          : variants.length
+            ? variants.reduce((t, v) => t + (v.free_qty || 0), 0)
+            : tracked ? free : null,
         has_variants: variants.length > 0,
         variants,
         in_stock: variants.length ? variants.some((v) => v.in_stock) : maxQty > 0,
@@ -276,4 +283,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
-        
+    
