@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>Products | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+.bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar a{color:var(--p);text-decoration:none;font-weight:500}
+.bar h1{font-size:18px;margin:0;flex:1}
+.btn{border:0;background:var(--p);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--pl);color:var(--p)}
+.btn.bad{background:#fdecef;color:#b4233c}
+.btn:disabled{opacity:.6}
+main{max-width:960px;margin:0 auto;padding:20px}
+.muted{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.thumb{aspect-ratio:1;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-size:28px}
+.info{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+.info b{font-size:15px}
+.old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
+.pill{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--pl);color:var(--p)}
+.pill.out{background:#fdecef;color:#b4233c}.pill.low{background:#fff3df;color:#a65f00}
+.pill.draft,.pill.archived{background:#f1f0f5;color:var(--mut)}
+.car{position:relative;aspect-ratio:1;background:var(--pl)}
+.track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
+.track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center;-webkit-user-drag:none}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:#ffffffe0;color:var(--ink);font-size:22px;line-height:1;cursor:pointer;box-shadow:0 1px 6px #0003;display:grid;place-items:center;padding:0 0 3px}
+.nav.prev{left:8px}.nav.next{right:8px}
+.count{position:absolute;right:8px;bottom:8px;background:#000a;color:#fff;font-size:11px;padding:2px 8px;border-radius:99px}
+.tabs{display:flex;gap:8px;max-width:960px;margin:14px auto 0;padding:0 20px}.tabs button{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:99px;cursor:pointer;font-weight:500}.tabs .on{background:var(--pl);color:var(--p);border-color:var(--p)}
+.vrow{display:flex;gap:6px;margin-top:8px}.vrow input[type=text]{flex:2;min-width:0}.vrow input[type=number]{flex:1;min-width:0}
+.rmx{border:0;background:var(--pl);color:var(--p);border-radius:10px;width:40px;cursor:pointer;font-size:16px;flex:none}
+.optsec{margin-top:6px;padding-top:4px;border-top:1px solid var(--line)}
+.opt-h{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chipb{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:13px}
+.empty,.box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+.box{max-width:420px;margin:30px auto;text-align:left}
+label{display:block;font-weight:500;margin:12px 0 4px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.sheet{position:fixed;inset:0;background:#201b2d66;z-index:10;display:flex;justify-content:center;align-items:flex-end}
+.panel{background:#fff;width:100%;max-width:560px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:20px}
+.panel h2{margin:0 0 4px}
+.imgs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.img{width:76px;height:76px;border-radius:10px;background:center/cover;position:relative;border:2px solid transparent}
+.img.main{border-color:var(--p)}
+.img button{position:absolute;border:0;border-radius:6px;font-size:11px;padding:2px 5px;cursor:pointer;background:#000a;color:#fff}
+.img .x{top:3px;right:3px}.img .m{bottom:3px;left:3px}
+.imgw{width:92px}.imgw .img{width:92px;height:92px}.imgw .tagsel{width:100%;padding:5px 3px;font-size:12px;margin-top:4px;border-radius:8px}
+.actions{display:flex;gap:10px;margin-top:18px}.actions .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:20;max-width:90%}
+/* ---- cleaner look ---- */
+.bar{box-shadow:0 1px 0 var(--line)}
+.btn{border-radius:12px;padding:12px 18px;font-size:15px}
+.card{border-radius:18px;box-shadow:0 1px 3px #201b2d0f}
+.panel{padding:0;overflow:hidden;display:flex;flex-direction:column;border-radius:24px 24px 0 0;max-height:94vh}
+.phead{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);background:#fff}
+.phead h2{margin:0;font-size:18px}
+.iconbtn{border:0;background:var(--pl);color:var(--p);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer}
+.pbody{overflow:auto;padding:4px 20px 20px;flex:1;background:var(--bg)}
+.pfoot{display:flex;gap:10px;padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#fff}
+.pfoot .btn{flex:1}
+.sec{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px}
+.sec h3{margin:0 0 2px;font-size:15px}
+.hint{color:var(--mut);font-size:12.5px;margin:6px 0 0;line-height:1.5}
+label{font-size:13px;color:#4a4458;margin:14px 0 6px}
+input[type=text],input[type=number],select,textarea{padding:13px 14px;border-radius:12px;font-size:15px;min-height:46px;border:1.5px solid var(--line)}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--p);box-shadow:0 0 0 3px #6d28d922}
+input[readonly]{background:#f6f4fb;color:#5b556a}
+.row2{display:flex;gap:12px}.row2>div{flex:1;min-width:0}
+.switchrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0}
+.switchrow small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px;font-weight:400}
+.sw{position:relative;width:48px;height:28px;flex:none;display:inline-block;margin:0}
+.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.sw i{position:absolute;inset:0;background:#d6d1e3;border-radius:99px;transition:background .2s}
+.sw i::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .2s}
+.sw input:checked + i{background:var(--p)}
+.sw input:checked + i::after{transform:translateX(20px)}
+.sw input:disabled + i{opacity:.55}
+.totalnote{margin:8px 0 0;padding:10px 12px;background:var(--pl);color:var(--p);border-radius:10px;font-size:13px;font-weight:500;line-height:1.5}
+.lock{background:#fff7e6;border:1px solid #f6dfae;border-radius:12px;padding:12px;font-size:13px;margin:8px 0 0}
+.opt-h{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.opt-h::-webkit-scrollbar{display:none}
+.chipb{white-space:nowrap;flex:none}
+.optcard{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}
+.optcard b{font-size:13px}
+.vhead{display:flex;gap:6px;margin-top:14px;font-size:12px;color:var(--mut);font-weight:600}
+.vhead span:nth-child(1){flex:2}.vhead span:nth-child(2),.vhead span:nth-child(3){flex:1}.vhead span:nth-child(4){width:40px;flex:none}
+.vrow input[type=text],.vrow input[type=number]{padding:11px 12px;min-height:44px}
+details.how{margin-top:10px;font-size:13px}
+details.how summary{cursor:pointer;color:var(--p);font-weight:600}
+.dropzone{border:2px dashed #d6d1e3;border-radius:14px;padding:14px;text-align:center;background:var(--bg)}
+.dropzone input{border:0;background:transparent;min-height:0;padding:0}
+.actions.danger{margin-top:16px}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a href="/dashboard/">&larr; Overview</a>
+  <h1>Products</h1>
+  <button id="add" class="btn hidden" type="button">+ Add product</button>
+</header>
+<nav id="tabs" class="tabs hidden"><button id="tab-active" class="on" type="button">Active</button><button id="tab-low" type="button">Low stock</button><button id="tab-archived" type="button">Archived</button></nav>
+<main id="main"><p class="muted">Loading your products&hellip;</p></main>
+
+<div id="sheet" class="sheet hidden">
+  <div class="panel">
+    <div class="phead"><h2 id="ptitle">Add product</h2><button id="closex" class="iconbtn" type="button" aria-label="Close">✕</button></div>
+    <div class="pbody">
+
+      <section class="sec">
+        <h3>Basics</h3>
+        <label for="name">Product name</label>
+        <input id="name" type="text" maxlength="200" placeholder="e.g. Ribbed knit sweater">
+        <div class="row2">
+          <div><label for="price">Price (₦)</label><input id="price" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <div><label for="compare">Old price (₦)</label><input id="compare" type="number" min="0" step="1" inputmode="numeric" placeholder="Optional"></div>
+        </div>
+        <label for="desc">Description</label>
+        <textarea id="desc" placeholder="Tell customers about this product"></textarea>
+        <label for="status">Visibility</label>
+        <select id="status"><option value="draft">Draft (hidden from customers)</option><option value="published">Published (visible in your store)</option></select>
+      </section>
+
+      <section class="sec">
+        <h3>Photos</h3>
+        <p class="hint">Up to 10 photos. JPG, PNG or WebP, 5 MB each.</p>
+        <div class="dropzone" style="margin-top:10px"><input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></div>
+        <div id="imgs" class="imgs"></div>
+        <div id="newtagwrap" class="hidden"><label for="newtag">New photos belong to</label><select id="newtag"></select></div>
+      </section>
+
+      <section class="sec">
+        <h3>Stock</h3>
+        <div class="switchrow"><span>Track stock<small>Count what you have and stop selling at zero</small></span><label class="sw"><input id="track" type="checkbox" checked><i></i></label></div>
+        <div id="stockbox">
+          <div id="stockwrap"><label id="stocklabel" for="stock">Total in stock</label><input id="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <p id="totalnote" class="totalnote hidden"></p>
+          <label for="low">Warn me when free stock is at or below</label>
+          <input id="low" type="number" min="0" step="1" inputmode="numeric" value="5">
+          <div class="switchrow"><span>Show stock counts to customers<small>For example "6 left" next to each colour or size</small></span><label class="sw"><input id="showstock" type="checkbox"><i></i></label></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div id="optlabel" class="switchrow" style="padding-top:0"><span><b>Options</b><small>Size, colour, portion, volume&hellip;</small></span><label class="sw"><input id="hasopts" type="checkbox"><i></i></label></div>
+        <p id="optlock" class="lock hidden">Options such as size, colour, portion or volume are available on the Growth plan and above.</p>
+        <div id="optbox" class="hidden">
+          <details class="how"><summary>How options work</summary>
+            <p class="hint">Name an option and list its choices with commas, like Colour: Black, White and Size: S, M, L. Put the one that changes how the product looks first (usually Colour), then link each photo to a colour below. You set the stock for each choice, and the total above adds itself up.</p>
+          </details>
+          <div class="hint" style="margin-top:12px">Start from an example:</div>
+          <div class="opt-h">
+            <button class="chipb" data-pre="clothes" type="button">Clothes &amp; shoes</button>
+            <button class="chipb" data-pre="food" type="button">Food &amp; snacks</button>
+            <button class="chipb" data-pre="drinks" type="button">Drinks</button>
+            <button class="chipb" data-pre="custom" type="button">Custom</button>
+          </div>
+          <div class="optcard"><b>Option 1</b> <span class="hint">the one that changes the look, like Colour</span>
+            <div class="row" style="margin-top:8px"><input id="o1n" list="optnames" type="text" maxlength="40" placeholder="Name, e.g. Colour"><input id="o1v" type="text" placeholder="Choices, e.g. Black, White"></div></div>
+          <div class="optcard"><b>Option 2</b> <span class="hint">optional, like Size</span>
+            <div class="row" style="margin-top:8px"><input id="o2n" list="optnames" type="text" maxlength="40" placeholder="Name, e.g. Size"><input id="o2v" type="text" placeholder="Choices, e.g. S, M, L"></div></div>
+          <datalist id="optnames"><option value="Size"><option value="Colour"><option value="Portion"><option value="Volume (ml)"><option value="Flavour"><option value="Pack size"></datalist>
+          <button id="gen" class="btn alt" type="button" style="margin-top:12px;width:100%">Create choices</button>
+          <div id="vrows"></div>
+          <button id="addv" class="btn alt" type="button" style="margin-top:10px;width:100%">+ Add one choice</button>
+          <p class="hint">Leave a price empty to use the product price. Removed choices are switched off, so old orders keep their details.</p>
+        </div>
+      </section>
+
+      <div class="actions danger"><button id="archive" class="btn bad hidden" type="button" style="flex:1">Archive product</button></div>
+    </div>
+    <div class="pfoot">
+      <button id="cancel" class="btn alt" type="button">Cancel</button>
+      <button id="save" class="btn" type="button">Save product</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(async function () {
+  "use strict";
+  const C = supabase.createClient(
+    "https://uhgnuuuvjkzfipynnhzk.supabase.co",
+    "sb_publishable_kLNzMwHsHzZj9q8KO4P6pw_u1CGVQTy",
+    { auth: { flowType: "pkce", storageKey: "kivo-auth", storage: window.localStorage, persistSession: true, autoRefreshToken: true } }
+  );
+  const BUCKET = "product-images", MAX_IMAGES = 10, MAX_BYTES = 5 * 1024 * 1024;
+  const $ = (id) => document.getElementById(id);
+  let store = null, products = [], editing = null, view = "active", canVars = false, vars = [], plannedTotal = null, tt;
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const imgUrl = (p) => C.storage.from(BUCKET).getPublicUrl(p).data.publicUrl;
+  const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "item";
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 3500); };
+  const sorted = (p) => (p.product_images || []).slice().sort((a, b) => (b.is_primary - a.is_primary) || (a.sort_order - b.sort_order));
+  const invOf = (p) => (p.inventory || []).find((r) => !r.variant_id) || null;
+  const lowOf = (p) => { const i = invOf(p); return i && i.low_stock_threshold != null ? i.low_stock_threshold : 5; };
+  // "out" when nothing is free, "low" at or below the seller's warning level, otherwise "ok".
+  const variantsOf = (p) => (p.product_variants || []).filter((v) => v.is_active).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const stockState = (p) => {
+    const vs = variantsOf(p);
+    if (p.track_inventory && vs.length) {
+      const rows = vs.map((v) => (p.inventory || []).find((r) => r.variant_id === v.id)).filter(Boolean);
+      if (!rows.length) return null;
+      const frees = rows.map((r) => r.quantity - (r.reserved_quantity || 0));
+      if (frees.every((f) => f <= 0)) return "out";
+      return rows.some((r, k) => frees[k] <= (r.low_stock_threshold == null ? 5 : r.low_stock_threshold)) ? "low" : "ok";
+    }
+    const i = invOf(p);
+    if (!p.track_inventory || !i) return null;
+    const free = i.quantity - (i.reserved_quantity || 0);
+    return free <= 0 ? "out" : free <= lowOf(p) ? "low" : "ok";
+  };
+  const heldOf = (p) => {
+    const vs = variantsOf(p);
+    const rows = vs.length ? vs.map((v) => (p.inventory || []).find((r) => r.variant_id === v.id)).filter(Boolean) : [(p.inventory || []).find((r) => !r.variant_id)].filter(Boolean);
+    return rows.reduce((t, r) => t + (r.reserved_quantity || 0), 0);
+  };
+  const stockText = (p) => {
+    const vs = variantsOf(p);
+    if (vs.length) {
+      const rows = vs.map((v) => (p.inventory || []).find((r) => r.variant_id === v.id)).filter(Boolean);
+      const total = rows.reduce((t, r) => t + r.quantity, 0), held = rows.reduce((t, r) => t + (r.reserved_quantity || 0), 0);
+      return vs.length + (vs.length === 1 ? " choice" : " choices") + (p.track_inventory ? " · " + total + " in stock" + (held ? " · " + held + " held for orders" : "") : "");
+    }
+    const stock = stockOf(p);
+    return p.track_inventory && stock != null ? stock + " in stock" + (heldOf(p) ? " · " + heldOf(p) + " held for orders" : "") : "Stock not tracked";
+  };
+  const stockOf = (p) => { const i = (p.inventory || []).find((r) => !r.variant_id); return i ? i.quantity : null; };
+
+  const { data: { session } } = await C.auth.getSession();
+  if (!session) { location.replace("/auth/login.html"); return; }
+
+  async function loadPlan() {
+    try {
+      const sub = await C.from("subscriptions").select("plan_code").eq("user_id", session.user.id).in("status", ["active", "trialing"]).limit(1).maybeSingle();
+      if (!sub.data) return false;
+      const pl = await C.from("plans").select("allow_variants").eq("code", sub.data.plan_code).maybeSingle();
+      return !!(pl.data && pl.data.allow_variants);
+    } catch (e) { return false; }
+  }
+
+  async function loadStore() {
+    const { data, error } = await C.from("stores").select("id,name,slug").eq("owner_id", session.user.id).order("created_at").limit(1);
+    if (error) throw error;
+    store = data[0] || null;
+  }
+
+  async function loadProducts() {
+    const { data, error } = await C.from("products")
+      .select("id,name,description,price_ngn,compare_at_price_ngn,status,track_inventory,show_stock,product_images(id,storage_path,is_primary,sort_order,option_value),inventory(quantity,reserved_quantity,low_stock_threshold,variant_id),product_variants(id,name,options,price_ngn,is_active,sort_order)")
+      .eq("store_id", store.id)[view === "archived" ? "eq" : "neq"]("status", "archived").order("created_at", { ascending: false });
+    if (error) throw error;
+    products = view === "low"
+      ? data.filter((p) => p.status === "published" && ["out", "low"].includes(stockState(p)))
+      : data;
+  }
+
+  function renderStoreSetup() {
+    $("add").classList.add("hidden");
+    $("main").innerHTML = '<div class="box"><h2 style="margin:0 0 4px">Create your store</h2><p class="muted">You need a store before adding products.</p>' +
+      '<label for="sname">Store name</label><input id="sname" type="text" maxlength="100">' +
+      '<label for="sslug">Store link</label><input id="sslug" type="text" maxlength="60" placeholder="my-store">' +
+      '<div class="actions"><button id="mk" class="btn" type="button">Create store</button></div></div>';
+    $("sname").addEventListener("input", () => { $("sslug").value = slugify($("sname").value); });
+    $("mk").addEventListener("click", async () => {
+      const name = $("sname").value.trim(), slug = slugify($("sslug").value);
+      if (!name) return toast("Enter a store name.");
+      $("mk").disabled = true;
+      const { error } = await C.from("stores").insert({ owner_id: session.user.id, name, slug });
+      $("mk").disabled = false;
+      if (error) return toast(error.code === "23505" ? "That store link is taken. Try another." : error.message);
+      await start();
+    });
+  }
+
+  function carousel(imgs, name) {
+    if (!imgs.length) return '<div class="thumb">▦</div>';
+    const slides = imgs.map((i, n) => '<img class="slide" src="' + esc(imgUrl(i.storage_path)) + '" alt="' + esc(name) + ' photo ' + (n + 1) + '"' + (n ? ' loading="lazy"' : '') + ' draggable="false">').join("");
+    if (imgs.length < 2) return '<div class="car"><div class="track">' + slides + '</div></div>';
+    return '<div class="car"><div class="track" tabindex="0">' + slides + '</div>' +
+      '<button class="nav prev hidden" type="button" aria-label="Previous image">‹</button>' +
+      '<button class="nav next" type="button" aria-label="Next image">›</button>' +
+      '<span class="count">1/' + imgs.length + '</span></div>';
+  }
+
+  function initCarousels() {
+    document.querySelectorAll(".car").forEach((car) => {
+      const prev = car.querySelector(".prev");
+      if (!prev) return;
+      const t = car.querySelector(".track"), next = car.querySelector(".next"), cnt = car.querySelector(".count"), n = t.children.length;
+      const sync = () => {
+        const i = Math.round(t.scrollLeft / t.clientWidth);
+        cnt.textContent = (i + 1) + "/" + n;
+        prev.classList.toggle("hidden", i <= 0);
+        next.classList.toggle("hidden", i >= n - 1);
+      };
+      const go = (d) => t.scrollBy({ left: d * t.clientWidth, behavior: "smooth" });
+      prev.addEventListener("click", () => go(-1));
+      next.addEventListener("click", () => go(1));
+      t.addEventListener("scroll", sync, { passive: true });
+      t.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+      sync();
+    });
+  }
+
+  function renderList() {
+    $("tabs").classList.remove("hidden");
+    $("add").classList.toggle("hidden", view === "archived");
+    if (!products.length) {
+      $("main").innerHTML = view === "low"
+        ? '<div class="empty"><h2 style="margin:0 0 6px">Nothing is running low</h2><p class="muted">Published products that are low or sold out will appear here.</p></div>'
+        : view === "archived"
+        ? '<div class="empty"><h2 style="margin:0 0 6px">No archived products</h2><p class="muted">Products you archive will appear here.</p></div>'
+        : '<div class="empty"><h2 style="margin:0 0 6px">No products yet</h2><p class="muted">Add your first product to start building your catalogue.</p></div>';
+      return;
+    }
+    $("main").innerHTML = '<div class="grid">' + products.map((p) => {
+      const imgs = sorted(p), stock = stockOf(p);
+      return '<div class="card">' + carousel(imgs, p.name) +
+        '<div class="info"><b>' + esc(p.name) + '</b><div>' + money(p.price_ngn) + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : '') + '</div>' +
+        '<span class="pill ' + p.status + '">' + (p.status === "published" ? "Published" : p.status === "archived" ? "Archived" : "Draft") + '</span>' +
+        (stockState(p) === "out" ? '<span class="pill out">Out of stock</span>' : stockState(p) === "low" ? '<span class="pill low">Low stock</span>' : "") +
+        '<span class="muted">' + stockText(p) + '</span>' +
+        (view === "archived" ? '<button class="btn alt" data-restore="' + p.id + '" type="button">Restore</button>' : '<button class="btn alt" data-id="' + p.id + '" type="button">Edit</button>') + '</div></div>';
+    }).join("") + '</div>';
+    initCarousels();
+    document.querySelectorAll("[data-restore]").forEach((b) => b.addEventListener("click", () => restore(b.dataset.restore)));
+    document.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => openSheet(products.find((p) => p.id === b.dataset.id))));
+  }
+
+  function renderVars() {
+    $("vrows").innerHTML = (vars.length ? '<div class="vhead"><span>Choice</span><span>Price ₦</span><span>Stock</span><span></span></div>' : "") + vars.map((v, i) => '<div class="vrow"><input type="text" data-f="name" maxlength="100" placeholder="Choice name" value="' + esc(v.name) + '">' +
+      '<input type="number" data-f="price" min="0" step="1" inputmode="numeric" placeholder="Price ₦" value="' + (v.price == null ? "" : esc(v.price)) + '">' +
+      '<input type="number" data-f="stock" min="0" step="1" inputmode="numeric" placeholder="Stock" value="' + (v.stock == null ? "" : esc(v.stock)) + '">' +
+      '<button class="rmx" data-r="' + i + '" type="button" aria-label="Remove">✕</button></div>').join("");
+    $("vrows").querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => { readVars(); vars.splice(Number(b.dataset.r), 1); renderVars(); }));
+    renderImages();
+    updateTotals();
+  }
+
+  // The total always adds itself up from the stock of each choice.
+  function updateTotals() {
+    const on = $("hasopts").checked && (canVars || vars.some((v) => v.id));
+    $("stock").readOnly = on;
+    $("stocklabel").textContent = on ? "Total in stock (adds up from your choices)" : "Total in stock";
+    $("totalnote").classList.toggle("hidden", !on);
+    if (!on) { $("totalnote").textContent = ""; return; }
+    const qty = Array.from($("vrows").querySelectorAll("[data-f=stock]")).map((i) => parseInt(i.value, 10) || 0);
+    const sum = qty.reduce((t, n) => t + n, 0);
+    $("stock").value = sum;
+    const k = tagKey(), parts = {};
+    if (k) vars.forEach((v, i) => { const g = (v.options || {})[k]; if (g != null && qty[i] != null) parts[g] = (parts[g] || 0) + qty[i]; });
+    let text = Object.keys(parts).map((g) => g + " " + parts[g]).join("  ·  ");
+    if (plannedTotal != null && plannedTotal > sum) text += (text ? " — " : "") + (plannedTotal - sum) + " of your original " + plannedTotal + " not yet given to a choice.";
+    $("totalnote").textContent = text || "Enter the stock for each choice below.";
+  }
+
+  function readVars() {
+    vars = Array.from($("vrows").querySelectorAll(".vrow")).map((r, i) => ({
+      id: vars[i] ? vars[i].id : null, options: vars[i] ? vars[i].options : {}, order: i,
+      name: r.querySelector("[data-f=name]").value, price: r.querySelector("[data-f=price]").value, stock: r.querySelector("[data-f=stock]").value
+    }));
+  }
+
+  function paintOpts() {
+    const on = $("hasopts").checked, locked = !canVars && !vars.some((v) => v.id);
+    $("optlabel").classList.toggle("hidden", locked);
+    $("optlock").classList.toggle("hidden", !locked);
+    $("optbox").classList.toggle("hidden", !on || locked);
+    renderVars();
+  }
+
+  function generate() {
+    readVars();
+    const groups = [[$("o1n").value, $("o1v").value], [$("o2n").value, $("o2v").value]]
+      .map(([n, v]) => ({ name: n.trim(), values: Array.from(new Set(v.split(",").map((x) => x.trim()).filter(Boolean))).slice(0, 12) }))
+      .filter((g) => g.name || g.values.length);
+    if (!groups.length) return toast("Enter an option name and its choices, like Portion: Small, Large.");
+    if (groups.some((g) => !g.name || !g.values.length)) return toast("Give each option both a name and its choices.");
+    let combos = [{}];
+    for (const g of groups) combos = combos.flatMap((c) => g.values.map((val) => Object.assign({}, c, { [g.name]: val })));
+    const have = new Set(vars.map((v) => String(v.name).trim().toLowerCase()));
+    let added = 0;
+    for (const c of combos) {
+      const name = Object.values(c).join(" / ");
+      if (have.has(name.toLowerCase())) continue;
+      if (vars.length >= 50) { toast("You can add up to 50 choices."); break; }
+      vars.push({ id: null, name, price: "", stock: "", options: c, order: vars.length });
+      have.add(name.toLowerCase()); added++;
+    }
+    renderVars();
+    toast(added ? added + " choices added. Set the stock and price below." : "Those choices already exist.");
+  }
+
+  function checkOptions() {
+    readVars();
+    if (!vars.length) return "Add at least one choice for this product's options.";
+    const seen = new Set();
+    for (const v of vars) {
+      v.name = String(v.name).trim();
+      if (!v.name) return "Every choice needs a name.";
+      if (seen.has(v.name.toLowerCase())) return "You have two choices named " + v.name + ".";
+      seen.add(v.name.toLowerCase());
+      if (v.price !== "" && v.price != null && (!Number.isInteger(Number(v.price)) || Number(v.price) < 0)) return "Check the price for " + v.name + ".";
+      if (v.stock !== "" && v.stock != null && (!Number.isInteger(Number(v.stock)) || Number(v.stock) < 0)) return "Check the stock for " + v.name + ".";
+      v.price = v.price === "" || v.price == null ? null : Number(v.price);
+      v.stock = v.stock === "" || v.stock == null ? 0 : Number(v.stock);
+    }
+    return null;
+  }
+
+  async function saveOptions(id, tracked) {
+    const low = $("low").value === "" ? 5 : Math.max(0, parseInt($("low").value, 10) || 0);
+    const existing = (editing && editing.product_variants) || [];
+    const keep = new Set(vars.filter((v) => v.id).map((v) => v.id));
+    // Removed choices are switched off, not deleted, so old orders keep their details.
+    for (const v of existing.filter((x) => x.is_active && !keep.has(x.id))) {
+      const r = await C.from("product_variants").update({ is_active: false }).eq("id", v.id);
+      if (r.error) throw r.error;
+    }
+    for (const v of vars.filter((x) => x.id)) {
+      const r = await C.from("product_variants").update({ name: v.name, price_ngn: v.price, sort_order: v.order }).eq("id", v.id);
+      if (r.error) throw r.error;
+      if (tracked) {
+        const q = await C.from("inventory").update({ quantity: v.stock, low_stock_threshold: low }).eq("variant_id", v.id);
+        if (q.error) throw q.error;
+      }
+    }
+    const fresh = vars.filter((x) => !x.id);
+    if (!fresh.length) return;
+    // The product's own stock moves into its choices, so it must be cleared first.
+    if (tracked && !existing.length) {
+      const z = await C.from("inventory").update({ quantity: 0 }).eq("product_id", id).is("variant_id", null);
+      if (z.error) throw new Error("This product has stock held for orders. Ship or cancel those orders first, then add options.");
+    }
+    const ins = await C.from("product_variants").insert(fresh.map((v) => ({ product_id: id, name: v.name, options: v.options, price_ngn: v.price, sort_order: v.order }))).select("id,name");
+    if (ins.error) throw ins.error;
+    if (tracked) {
+      for (const v of fresh) {
+        const made = ins.data.find((r) => r.name === v.name);
+        if (!made) continue;
+        const q = await C.from("inventory").update({ quantity: v.stock, low_stock_threshold: low }).eq("variant_id", made.id);
+        if (q.error) throw q.error;
+      }
+    }
+  }
+
+  function tagKey() { const v = vars.find((x) => x.options && Object.keys(x.options).length); return v ? Object.keys(v.options)[0] : null; }
+  function tagValues() { const k = tagKey(); return k ? Array.from(new Set(vars.map((x) => (x.options || {})[k]).filter(Boolean))) : []; }
+
+  function renderImages() {
+    const imgs = editing ? sorted(editing) : [], vals = $("hasopts").checked ? tagValues() : [];
+    const opts = (cur) => '<option value="">Shows for all</option>' + vals.map((v) => '<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + '>' + esc(v) + '</option>').join("");
+    $("imgs").innerHTML = imgs.map((i) => '<div class="imgw"><div class="img' + (i.is_primary ? " main" : "") + '" style="background-image:url(\'' + esc(imgUrl(i.storage_path)) + '\')">' +
+      '<button class="x" data-del="' + i.id + '" type="button">✕</button>' + (i.is_primary ? "" : '<button class="m" data-main="' + i.id + '" type="button">Main</button>') + '</div>' +
+      (vals.length ? '<select class="tagsel" data-tag="' + i.id + '">' + opts(i.option_value) + '</select>' : "") + '</div>').join("");
+    $("imgs").querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => removeImage(b.dataset.del)));
+    $("imgs").querySelectorAll("[data-main]").forEach((b) => b.addEventListener("click", () => makeMain(b.dataset.main)));
+    $("imgs").querySelectorAll("[data-tag]").forEach((el) => el.addEventListener("change", async () => {
+      const r = await C.from("product_images").update({ option_value: el.value || null }).eq("id", el.dataset.tag);
+      if (r.error) return toast(r.error.message);
+      const im = editing.product_images.find((x) => x.id === el.dataset.tag);
+      if (im) im.option_value = el.value || null;
+      toast("Photo linked.");
+    }));
+    const cur = $("newtag").value;
+    $("newtagwrap").classList.toggle("hidden", !vals.length);
+    $("newtag").innerHTML = '<option value="">Not linked to a choice</option>' + vals.map((v) => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join("");
+    $("newtag").value = vals.includes(cur) ? cur : "";
+  }
+
+  function openSheet(p) {
+    editing = p || null;
+    $("ptitle").textContent = p ? "Edit product" : "Add product";
+    $("name").value = p ? p.name : "";
+    $("price").value = p ? p.price_ngn : "";
+    $("compare").value = p && p.compare_at_price_ngn ? p.compare_at_price_ngn : "";
+    $("desc").value = p && p.description ? p.description : "";
+    $("status").value = p && p.status === "published" ? "published" : "draft";
+    $("track").checked = p ? p.track_inventory : true;
+    $("stock").value = p && stockOf(p) != null ? stockOf(p) : "";
+    $("low").value = p ? lowOf(p) : 5;
+    $("showstock").checked = !!(p && p.show_stock);
+    plannedTotal = null;
+    vars = p ? variantsOf(p).map((v, k) => { const r = (p.inventory || []).find((x) => x.variant_id === v.id); return { id: v.id, name: v.name, price: v.price_ngn, stock: r ? r.quantity : 0, options: v.options || {}, order: k }; }) : [];
+    $("hasopts").checked = vars.length > 0;
+    $("hasopts").disabled = vars.length > 0;
+    $("o1n").value = ""; $("o1v").value = ""; $("o2n").value = ""; $("o2v").value = "";
+    paintOpts();
+    $("files").value = "";
+    $("archive").classList.toggle("hidden", !p);
+    renderImages();
+    $("stockbox").classList.toggle("hidden", !$("track").checked);
+    $("sheet").classList.remove("hidden");
+  }
+  const closeSheet = () => { $("sheet").classList.add("hidden"); editing = null; };
+
+  async function refresh(keepId) {
+    await loadProducts(); renderList();
+    if (keepId) { editing = products.find((p) => p.id === keepId) || null; renderImages(); }
+  }
+
+  async function removeImage(id) {
+    const img = editing.product_images.find((i) => i.id === id);
+    const { error } = await C.from("product_images").delete().eq("id", id);
+    if (error) return toast(error.message);
+    await C.storage.from(BUCKET).remove([img.storage_path]);
+    await refresh(editing.id);
+  }
+
+  async function makeMain(id) {
+    await C.from("product_images").update({ is_primary: false }).eq("product_id", editing.id);
+    const { error } = await C.from("product_images").update({ is_primary: true }).eq("id", id);
+    if (error) return toast(error.message);
+    await refresh(editing.id);
+  }
+
+  async function save() {
+    const name = $("name").value.trim(), price = Number($("price").value), cmp = $("compare").value;
+    const files = Array.from($("files").files);
+    if (!name) return toast("Enter a product name.");
+    if ($("price").value === "" || !Number.isInteger(price) || price < 0) return toast("Enter a whole-naira price.");
+    if (cmp !== "" && (!Number.isInteger(Number(cmp)) || Number(cmp) < 0)) return toast("Compare-at price must be a whole number.");
+    const have = editing ? (editing.product_images || []).length : 0;
+    if (have + files.length > MAX_IMAGES) return toast("A product can have up to " + MAX_IMAGES + " images.");
+    for (const f of files) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) return toast("Use JPG, PNG or WebP images.");
+      if (f.size > MAX_BYTES) return toast(f.name + " is over 5 MB.");
+    }
+    if ($("hasopts").checked && (canVars || vars.some((v) => v.id))) { const err = checkOptions(); if (err) return toast(err); }
+    const row = { name, description: $("desc").value.trim() || null, price_ngn: price, compare_at_price_ngn: cmp === "" ? null : Number(cmp), status: $("status").value, track_inventory: $("track").checked, show_stock: $("showstock").checked };
+    $("save").disabled = true;
+    try {
+      let id = editing && editing.id, res;
+      if (id) { res = await C.from("products").update(row).eq("id", id); }
+      else {
+        row.store_id = store.id; row.slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
+        res = await C.from("products").insert(row).select("id").single();
+        id = res.data && res.data.id;
+      }
+      if (res.error) throw res.error;
+      const useOpts = $("hasopts").checked && (canVars || vars.some((v) => v.id));
+      if (!useOpts && row.track_inventory) {
+        const vals = { low_stock_threshold: $("low").value === "" ? 5 : Math.max(0, parseInt($("low").value, 10) || 0) };
+        if ($("stock").value !== "") vals.quantity = Math.max(0, parseInt($("stock").value, 10) || 0);
+        await C.from("inventory").update(vals).eq("product_id", id).is("variant_id", null);
+      }
+      if (useOpts) await saveOptions(id, row.track_inventory);
+      for (let n = 0; n < files.length; n++) {
+        const ext = files[n].type === "image/png" ? "png" : files[n].type === "image/webp" ? "webp" : "jpg";
+        const path = store.id + "/" + id + "/" + crypto.randomUUID() + "." + ext;
+        const up = await C.storage.from(BUCKET).upload(path, files[n], { contentType: files[n].type, cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        const ins = await C.from("product_images").insert({ product_id: id, storage_path: path, sort_order: have + n, is_primary: have === 0 && n === 0, option_value: $("newtag").value || null });
+        if (ins.error) throw ins.error;
+      }
+      await refresh(); closeSheet(); toast("Product saved.");
+    } catch (e) { toast(e.message || "Could not save the product."); }
+    $("save").disabled = false;
+  }
+
+  async function restore(id) {
+    const { error } = await C.from("products").update({ status: "draft" }).eq("id", id);
+    if (error) return toast(error.message);
+    await refresh(); toast("Product restored as a draft.");
+  }
+
+  function setView(v) {
+    view = v;
+    $("tab-active").classList.toggle("on", v === "active");
+    $("tab-low").classList.toggle("on", v === "low");
+    $("tab-archived").classList.toggle("on", v === "archived");
+    refresh();
+  }
+
+  async function archive() {
+    if (!confirm("Archive this product? It will be hidden from your store.")) return;
+    const { error } = await C.from("products").update({ status: "archived" }).eq("id", editing.id);
+    if (error) return toast(error.message);
+    await refresh(); closeSheet(); toast("Product archived.");
+  }
+
+  async function start() {
+    try {
+      await loadStore();
+      canVars = await loadPlan();
+      if (!store) return renderStoreSetup();
+      await loadProducts(); renderList();
+    } catch (e) { $("main").innerHTML = '<div class="empty"><p>Could not load your products.</p><p class="muted">' + esc(e.message) + '</p></div>'; }
+  }
+
+  const PRESETS = {
+    food: ["Portion", "Small, Medium, Large", "", ""],
+    drinks: ["Volume (ml)", "330ml, 500ml, 750ml", "", ""],
+    clothes: ["Size", "S, M, L, XL", "Colour", "Black, White"],
+    custom: ["", "", "", ""]
+  };
+  document.querySelectorAll("[data-pre]").forEach((b) => b.addEventListener("click", () => {
+    const p = PRESETS[b.dataset.pre];
+    $("o1n").value = p[0]; $("o1v").value = p[1]; $("o2n").value = p[2]; $("o2v").value = p[3];
+  }));
+  $("hasopts").addEventListener("change", () => {
+    const n = parseInt($("stock").value, 10);
+    if ($("hasopts").checked) plannedTotal = n > 0 ? n : null;
+    else if (plannedTotal != null) { $("stock").value = plannedTotal; plannedTotal = null; }
+    paintOpts();
+  });
+  $("vrows").addEventListener("input", updateTotals);
+  $("track").addEventListener("change", () => $("stockbox").classList.toggle("hidden", !$("track").checked));
+  $("closex").addEventListener("click", closeSheet);
+  $("gen").addEventListener("click", generate);
+  $("addv").addEventListener("click", () => { readVars(); vars.push({ id: null, name: "", price: "", stock: "", options: {}, order: vars.length }); renderVars(); });
+  $("tab-active").addEventListener("click", () => setView("active"));
+  $("tab-low").addEventListener("click", () => setView("low"));
+  $("tab-archived").addEventListener("click", () => setView("archived"));
+  $("add").addEventListener("click", () => openSheet(null));
+  $("cancel").addEventListener("click", closeSheet);
+  $("save").addEventListener("click", save);
+  $("archive").addEventListener("click", archive);
+  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
+  await start();
+})();
+</script>
+</body>
+</html>
