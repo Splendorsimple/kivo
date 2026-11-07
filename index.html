@@ -1,475 +1,424 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#faf9f6">
-  <meta name="description" content="Kivo gives social sellers one simple home for their products, orders, and online storefront.">
-  <title>Kivo — Your social sales. One simple home.</title>
-  <link rel="icon" type="image/png" href="assets/logo/kivo-icon.png">
-  <link rel="stylesheet" href="css/global.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f7fc">
+<title>Store | Kivo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#6d28d9;--pl:#f1eaff;--ink:#201b2d;--mut:#817b90;--line:#ece9f2;--bg:#f8f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "DM Sans",sans-serif}
+button,a{font:inherit}
+.hidden{display:none!important}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+.center{text-align:center;color:var(--mut);padding:60px 20px}
+.head{display:flex;gap:14px;align-items:center}
+.logo{width:64px;height:64px;border-radius:16px;background:var(--pl) center/cover;display:grid;place-items:center;color:var(--p);font-size:24px;font-weight:700;flex:none}
+.head h1{margin:0;font-size:22px}
+.about{color:var(--mut);margin:12px 0 0;white-space:pre-wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 6px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 14px;color:var(--ink);text-decoration:none;font-weight:500}
+.chip.wa{background:#25d366;border-color:#25d366;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.info{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;flex:1}
+.info b{font-size:14px}
+.old{text-decoration:line-through;color:var(--mut);margin-left:6px;font-size:12px}
+.card{cursor:pointer}
+.buy{margin-top:6px;border:0;border-radius:10px;padding:10px;background:var(--p);color:#fff;font-weight:700;cursor:pointer}
+.btn.pur{background:var(--p)}
+.cartbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:8;max-width:560px;margin:0 auto}
+.cartbar .btn{margin:0;box-shadow:0 6px 20px #6d28d955}
+.row2{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.qty{display:flex;align-items:center;gap:10px}
+.qty button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:16px}
+.f{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-top:8px;font:inherit;background:#fff}
+textarea.f{min-height:60px;resize:vertical}
+.opt{display:flex;gap:10px;align-items:center;padding:9px 0;font-weight:500}
+.box2{background:var(--pl);border-radius:12px;padding:12px;margin:10px 0;line-height:1.6;word-break:break-word}
+.msg{color:var(--mut);font-size:13px;margin:8px 0 0}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;z-index:20;max-width:90%}
+.tag.low{background:#fff3df;color:#a65f00}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.optb{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;cursor:pointer;font:inherit;font-weight:500}
+.optb.on{border-color:var(--p);background:var(--pl);color:var(--p)}
+.optb:disabled{opacity:.4;border-style:dashed;cursor:default}
+.optb img{width:28px;height:28px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:6px}
+.optlbl{margin:12px 0 6px;font-weight:700}
+.optlbl span{font-weight:400;color:var(--mut)}
+.tag{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fdecef;color:#b4233c}
+.car{position:relative;aspect-ratio:1;background:var(--pl)}
+.track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
+.track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center}
+.ph{display:grid;place-items:center;height:100%;color:var(--p);font-size:30px}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:#ffffffe0;color:var(--ink);font-size:22px;line-height:1;cursor:pointer;box-shadow:0 1px 6px #0003;display:grid;place-items:center;padding:0 0 3px}
+.nav.prev{left:8px}.nav.next{right:8px}
+.count{position:absolute;right:8px;bottom:8px;background:#000a;color:#fff;font-size:11px;padding:2px 8px;border-radius:99px}
+.sheet{position:fixed;inset:0;background:#201b2d66;z-index:10;display:flex;justify-content:center;align-items:flex-end}
+.panel{background:#fff;width:100%;max-width:560px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0}
+.pad{padding:18px 20px 22px}
+.pad h2{margin:0 0 6px}
+.price{font-size:18px;font-weight:700}
+.desc{color:#4a4458;white-space:pre-wrap;margin:12px 0}
+.btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:14px;font-weight:700;cursor:pointer;text-decoration:none;background:#25d366;color:#fff;margin-top:8px}
+.btn.alt{background:var(--pl);color:var(--p)}
+.x{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;border-radius:50%;border:0;background:#ffffffe0;font-size:18px;cursor:pointer}
+.foot{text-align:center;color:var(--mut);font-size:12px;padding:24px 0 8px}
+.foot a{color:var(--p);text-decoration:none}
+/* ---- cleaner look ---- */
+.panel{border-radius:24px 24px 0 0;box-shadow:0 -8px 30px #201b2d22}
+.pad{padding:20px 20px 0}
+.pad h2{font-size:20px;line-height:1.3;margin:0 0 8px}
+.price{font-size:22px;letter-spacing:-.01em}
+.desc{font-size:14px;line-height:1.6;color:#5b556a;margin:12px 0 4px}
+.optlbl{margin:18px 0 8px;font-size:14px}
+.opts{gap:10px}
+.optb{padding:10px 16px;font-size:14px;border-width:1.5px;min-height:44px;transition:border-color .15s,background .15s}
+.optb small{color:var(--mut);font-weight:400}
+.optb.on small{color:var(--p)}
+.optb img{width:38px;height:38px;border-radius:8px;margin:-4px 8px -4px -8px}
+.optb:has(img){padding:6px 14px 6px 8px}
+.addbar{position:sticky;bottom:0;background:linear-gradient(#fff0,#fff 28%);padding:18px 0 20px;margin-top:6px}
+.addbar .btn{margin:0;padding:16px;font-size:16px;border-radius:14px;box-shadow:0 6px 18px #6d28d933}
+.addbar .btn:disabled{box-shadow:none;background:#cfc8e0}
+.card{border-radius:18px;box-shadow:0 1px 3px #201b2d0f;transition:box-shadow .15s}
+.card:active{box-shadow:0 1px 1px #201b2d0f}
+.buy{border-radius:12px;padding:11px}
+.head h1{letter-spacing:-.01em}
+</style>
 </head>
-
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
+<div id="root"><p class="center">Loading store&hellip;</p></div>
 
-  <!-- Navigation -->
-  <header class="site-header">
-    <div class="nav-container">
-      <a class="brand" href="/" aria-label="Kivo home">
-        <img src="assets/logo/kivo-wordmark.png" alt="Kivo">
-      </a>
+<div id="cartbar" class="cartbar hidden"><button class="btn pur" id="opencart" type="button"></button></div>
+<div id="toast" class="toast hidden" role="status"></div>
+<div id="sheet" class="sheet hidden"><div class="panel" id="panel" style="position:relative"></div></div>
 
-      <div class="nav-actions">
-        <a class="nav-login" href="/auth/login.html">Log in</a>
-        <a class="nav-cta" href="/auth/login.html">Build my store <span aria-hidden="true">↗</span></a>
+<script>
+(async function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const root = $("root");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const slug = (location.pathname.split("/").filter(Boolean)[1] || "").toLowerCase();
+  let store, contact, products = [], payMethods = [];
 
-        <button
-          class="menu-button"
-          id="menu-button"
-          type="button"
-          aria-label="Open navigation menu"
-          aria-controls="site-menu"
-          aria-expanded="false"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
-    </div>
+  function fail(title, text) {
+    root.innerHTML = '<div class="center"><h2 style="color:#201b2d">' + esc(title) + '</h2><p>' + esc(text) + '</p></div>';
+  }
 
-    <div class="menu-backdrop" id="menu-backdrop" hidden></div>
+  function carousel(p) {
+    if (!p.images.length) return '<div class="car"><div class="ph">▦</div></div>';
+    const slides = p.images.map((u, n) => '<img class="slide" src="' + esc(u) + '" alt="' + esc(p.name) + ' photo ' + (n + 1) + '"' + (n ? ' loading="lazy"' : '') + ' draggable="false">').join("");
+    if (p.images.length < 2) return '<div class="car"><div class="track">' + slides + '</div></div>';
+    return '<div class="car"><div class="track" tabindex="0">' + slides + '</div>' +
+      '<button class="nav prev hidden" type="button" aria-label="Previous image">‹</button>' +
+      '<button class="nav next" type="button" aria-label="Next image">›</button>' +
+      '<span class="count">1/' + p.images.length + '</span></div>';
+  }
 
-    <nav class="site-menu" id="site-menu" aria-label="Main navigation" hidden>
-      <p class="menu-heading">Explore Kivo</p>
-      <a href="#features">Features</a>
-      <a href="#how-it-works">How it works</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">Frequently asked questions</a>
-      <a href="/auth/login.html">Log in to your account</a>
-      <a class="button button-primary menu-cta" href="/auth/login.html">Create your seller account <span aria-hidden="true">↗</span></a>
-    </nav>
-  </header>
+  function initCarousels(scope) {
+    scope.querySelectorAll(".car").forEach((car) => {
+      const prev = car.querySelector(".prev");
+      if (!prev) return;
+      const t = car.querySelector(".track"), next = car.querySelector(".next"), cnt = car.querySelector(".count"), n = t.children.length;
+      const sync = () => {
+        const i = Math.round(t.scrollLeft / t.clientWidth);
+        cnt.textContent = (i + 1) + "/" + n;
+        prev.classList.toggle("hidden", i <= 0);
+        next.classList.toggle("hidden", i >= n - 1);
+      };
+      const go = (d) => t.scrollBy({ left: d * t.clientWidth, behavior: "smooth" });
+      prev.addEventListener("click", () => go(-1));
+      next.addEventListener("click", () => go(1));
+      t.addEventListener("scroll", sync, { passive: true });
+      t.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+      sync();
+    });
+  }
 
-  <main id="main-content">
-    <!-- Hero -->
-    <section class="hero section-shell">
-      <div class="hero-copy">
-        <div class="eyebrow">BUILT FOR SOCIAL SELLERS</div>
+  const digits = (v) => String(v || "").replace(/\D/g, "");
+  const priceHtml = (p) => {
+    if (p.has_variants) {
+      const open = p.variants.filter((v) => v.in_stock).map((v) => v.price_ngn);
+      const prices = open.length ? open : p.variants.map((v) => v.price_ngn);
+      const lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
+      return '<span class="price">' + (lo !== hi ? "From " : "") + money(lo) + '</span>';
+    }
+    return '<span class="price">' + money(p.price_ngn) + '</span>' + (p.compare_at_price_ngn ? '<span class="old">' + money(p.compare_at_price_ngn) + '</span>' : "");
+  };
 
-        <h1>Your social sales.<br>One <span>simple home.</span></h1>
+  function render() {
+    const initial = (store.name || "K").trim().charAt(0).toUpperCase();
+    const chips = [];
+    if (contact.whatsapp) chips.push('<a class="chip wa" href="https://wa.me/' + digits(contact.whatsapp) + '" target="_blank" rel="noopener">WhatsApp</a>');
+    if (contact.phone) chips.push('<a class="chip" href="tel:' + esc(contact.phone.replace(/[^\d+]/g, "")) + '">Call</a>');
+    (contact.socials || []).forEach((s) => { if (String(s.url).startsWith("https://")) chips.push('<a class="chip" href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + '</a>'); });
+    if (contact.email) chips.push('<a class="chip" href="mailto:' + esc(contact.email) + '">Email</a>');
 
-        <p class="hero-description">
-          Your customers find you on social media. Kivo gives your products,
-          orders, and storefront one organised place to call home.
-        </p>
+    root.innerHTML = '<div class="wrap"><div class="head"><div class="logo"' + (store.logo_url ? ' style="background-image:url(\'' + esc(store.logo_url) + '\')"' : "") + '>' + (store.logo_url ? "" : esc(initial)) + '</div><h1>' + esc(store.name) + '</h1></div>' +
+      (store.description ? '<p class="about">' + esc(store.description) + '</p>' : "") +
+      (chips.length ? '<div class="chips">' + chips.join("") + '</div>' : "") +
+      (products.length ? '<div class="grid">' + products.map((p, i) =>
+        '<div class="card">' + carousel(p) + '<div class="info" data-i="' + i + '"><b>' + esc(p.name) + '</b><div>' + priceHtml(p) + '</div>' + (p.show_stock && p.free_qty != null && p.in_stock ? '<span class="msg" style="margin:0">' + p.free_qty + ' in stock</span>' : "") + (p.in_stock ? (!p.has_variants && p.max_qty <= 5 ? '<span class="tag low">Only ' + p.max_qty + ' left</span>' : "") + '<button class="buy" type="button">' + (p.has_variants ? "Choose options" : "Add to cart") + '</button>' : '<span class="tag">Out of stock</span>') + '</div></div>').join("") + '</div>'
+        : '<p class="center">No products yet. Check back soon.</p>') +
+      '<div class="foot">Powered by <a href="/">Kivo</a></div></div>';
+    initCarousels(root);
+    root.querySelectorAll(".card").forEach((card, i) => card.addEventListener("click", (e) => { if (e.target.closest(".nav")) return; if (e.target.closest(".buy")) { if (products[i].has_variants) openSheet(products[i]); else add(products[i].id); return; } openSheet(products[i]); }));
+  }
 
-        <div class="hero-actions">
-          <a class="button button-primary" href="/auth/login.html">
-            Build my store <span aria-hidden="true">↗</span>
-          </a>
-          <a class="button button-secondary" href="#how-it-works">
-            See how it works <span aria-hidden="true">↓</span>
-          </a>
-        </div>
+  const uniq = (a) => a.filter((x, i) => a.indexOf(x) === i);
 
-        <p class="hero-note">
-          Made for ambitious sellers. Designed to keep things simple.
-        </p>
-      </div>
+  // Options built from the same names, such as Colour and Size, can be shown as separate pickers.
+  function optionKeys(p) {
+    const vs = p.variants || [];
+    if (!vs.length) return [];
+    const keys = Object.keys(vs[0].options || {});
+    if (!keys.length || keys.length > 2) return [];
+    const same = vs.every((v) => { const k = Object.keys(v.options || {}); return k.length === keys.length && keys.every((x) => k.includes(x)); });
+    return same ? keys : [];
+  }
 
-      <!-- Decorative product preview; not live account data -->
-      <div class="hero-visual" aria-label="Illustration of a seller dashboard and online storefront">
-        <div class="preview-glow"></div>
+  // For every picker: each value, whether it is selected, and whether it can be chosen right now.
+  function groupStates(vs, keys, sel) {
+    return keys.map((k, gi) => uniq(vs.map((v) => v.options[k])).map((val) => {
+      const cand = vs.filter((v) => v.options[k] === val && (gi === 0 || sel[keys[0]] == null || v.options[keys[0]] === sel[keys[0]]));
+      return { val, on: sel[k] === val, exists: cand.length > 0, enabled: cand.some((v) => v.in_stock), count: cand.length && cand.every((v) => v.free_qty != null) ? cand.reduce((t, v) => t + v.free_qty, 0) : null };
+    }));
+  }
 
-        <div class="floating-label">
-          <span class="floating-label-icon" aria-hidden="true">✓</span>
-          One place for your sales
-        </div>
+  function openSheet(p) {
+    const vs = p.variants || [], keys = optionKeys(p), grouped = keys.length > 0;
+    let sel = {}, flat = null;
+    // Two pickers: the first in-stock choice is selected, like most big shops do.
+    if (grouped && keys.length === 2) { const f = vs.find((v) => v.in_stock); if (f) sel[keys[0]] = f.options[keys[0]]; }
+    const tags = p.image_tags || [];
+    const picked = () => grouped ? (keys.every((k) => sel[k] != null) ? vs.find((v) => keys.every((k) => v.options[k] === sel[k])) || null : null) : flat;
+    const jump = (val, smooth) => {
+      const i = tags.indexOf(val), t = $("panel").querySelector(".track");
+      if (i >= 0 && t) t.scrollTo({ left: i * t.clientWidth, behavior: smooth ? "smooth" : "auto" });
+    };
+    const thumb = (val) => { const i = tags.indexOf(val); return i >= 0 && p.images[i] ? '<img src="' + esc(p.images[i]) + '" alt="">' : ""; };
 
-        <div class="dashboard-preview">
-          <div class="preview-topbar">
-            <div class="preview-brand">
-              <span class="preview-brand-icon" aria-hidden="true">k</span>
-              Kivo dashboard
-            </div>
-            <span class="preview-status">Your business, organised</span>
-          </div>
+    const priceBox = () => {
+      const v = picked();
+      if (v) return '<span class="price">' + money(v.price_ngn) + '</span>';
+      const part = grouped ? vs.filter((x) => keys.every((k) => sel[k] == null || x.options[k] === sel[k])) : vs;
+      const open = part.filter((x) => x.in_stock), pool = (open.length ? open : part).map((x) => x.price_ngn);
+      if (!pool.length) return priceHtml(p);
+      const lo = Math.min.apply(null, pool), hi = Math.max.apply(null, pool);
+      return '<span class="price">' + (lo !== hi ? "From " : "") + money(lo) + '</span>';
+    };
 
-          <div class="preview-body">
-            <div class="preview-welcome">
-              <div>
-                <h3>Your business at a glance</h3>
-                <p>A clearer view of your store activity.</p>
-              </div>
-              <div class="preview-avatar" aria-hidden="true">KS</div>
-            </div>
+    const optionsHtml = () => {
+      if (!p.in_stock) return '<span class="tag">Out of stock</span>';
+      let h = "";
+      if (grouped) {
+        groupStates(vs, keys, sel).forEach((chips, gi) => {
+          h += '<p class="optlbl">' + esc(keys[gi]) + (sel[keys[gi]] != null ? ': <span>' + esc(sel[keys[gi]]) + '</span>' : "") + '</p><div class="opts">' +
+            chips.map((c) => '<button type="button" class="optb' + (c.on ? " on" : "") + '" data-g="' + gi + '" data-val="' + esc(c.val) + '"' + (c.enabled ? "" : " disabled") + '>' + (gi === 0 ? thumb(c.val) : "") + esc(c.val) + (c.count != null ? ' <small>(' + c.count + ')</small>' : "") + '</button>').join("") + '</div>';
+        });
+      } else if (p.has_variants) {
+        h += '<p class="optlbl">Choose an option</p><div class="opts">' +
+          vs.map((v) => '<button type="button" class="optb' + (flat && flat.id === v.id ? " on" : "") + '" data-flat="' + v.id + '"' + (v.in_stock ? "" : " disabled") + '>' + esc(v.name) + (v.in_stock ? (v.free_qty != null ? " (" + v.free_qty + " left)" : "") : " (sold out)") + '</button>').join("") + '</div>';
+      }
+      const v = picked(), max = p.has_variants ? (v ? v.max_qty : null) : p.max_qty;
+      if (max != null && max <= 5) h += '<p class="msg" style="color:#a65f00;margin:8px 0">Only ' + max + ' left in stock</p>';
+      const next = grouped ? keys.find((k) => sel[k] == null) : null;
+      const need = p.has_variants && !v;
+      return h + '<div class="addbar"><button class="btn pur" id="addcart" type="button"' + (need ? " disabled" : "") + '>' + (need ? "Select " + (next ? next.toLowerCase() : "an option") : "Add to cart") + '</button></div>';
+    };
 
-            <div class="preview-stats">
-              <div class="preview-stat">
-                <span class="preview-stat-label">Products</span>
-                <strong>Catalogue</strong>
-                <span class="preview-stat-change">In one place</span>
-              </div>
+    const paintBody = () => {
+      $("pricebox").innerHTML = priceBox();
+      $("optbody").innerHTML = optionsHtml();
+      $("optbody").querySelectorAll("[data-g]").forEach((b) => b.addEventListener("click", () => {
+        const gi = Number(b.dataset.g), k = keys[gi], val = b.dataset.val;
+        sel[k] = sel[k] === val && keys.length === 1 ? null : val;
+        // A size that the new colour doesn't offer is cleared.
+        if (gi === 0 && keys.length === 2 && sel[keys[1]] != null && !vs.some((v) => v.in_stock && v.options[keys[0]] === sel[k] && v.options[keys[1]] === sel[keys[1]])) delete sel[keys[1]];
+        if (gi === 0) jump(val, true);
+        paintBody();
+      }));
+      $("optbody").querySelectorAll("[data-flat]").forEach((b) => b.addEventListener("click", () => { flat = vs.find((v) => v.id === b.dataset.flat); paintBody(); }));
+      if ($("addcart")) $("addcart").addEventListener("click", () => { const v = picked(); add(keyOf(p.id, v ? v.id : null)); closeSheet(); });
+    };
 
-              <div class="preview-stat">
-                <span class="preview-stat-label">Orders</span>
-                <strong>Tracking</strong>
-                <span class="preview-stat-change">Stay organised</span>
-              </div>
+    $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button>' + carousel(p) +
+      '<div class="pad"><h2>' + esc(p.name) + '</h2><div id="pricebox"></div>' +
+      (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : "") + '<div id="optbody"></div></div>';
+    initCarousels($("panel"));
+    $("close").addEventListener("click", closeSheet);
+    paintBody();
+    showSheet();
+    if (grouped && sel[keys[0]] != null) jump(sel[keys[0]], false);
+  }
+  function showSheet() { $("sheet").classList.remove("hidden"); document.body.style.overflow = "hidden"; }
 
-              <div class="preview-stat">
-                <span class="preview-stat-label">Your store</span>
-                <strong>Online</strong>
-                <span class="preview-stat-change">Share your link</span>
-              </div>
-            </div>
+  // ---- Cart (kept in this browser only) ----
+  const CART_KEY = "kivo-cart-" + slug;
+  let cart = {}, tt;
+  try { cart = JSON.parse(localStorage.getItem(CART_KEY) || "{}") || {}; } catch (e) { cart = {}; }
+  const saveCart = () => { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {} paintBar(); };
+  // A cart key is the product id, or "productId|optionId" for products with options.
+  const keyOf = (pid, vid) => pid + (vid ? "|" + vid : "");
+  const splitKey = (k) => { const a = k.split("|"); return { pid: a[0], vid: a[1] || null }; };
+  const lines = () => Object.keys(cart).map((k) => {
+    const sk = splitKey(k), p = products.find((x) => x.id === sk.pid);
+    const v = p && sk.vid ? (p.variants || []).find((x) => x.id === sk.vid) || null : null;
+    return { k, p, v, q: cart[k], u: p ? (v ? v.price_ngn : p.price_ngn) : 0, mx: maxOf(k) };
+  }).filter((l) => l.p && l.mx > 0);
+  const cartTotal = () => lines().reduce((t, l) => t + l.u * l.q, 0);
+  function toast(m) { const t = $("toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(tt); tt = setTimeout(() => t.classList.add("hidden"), 2500); }
+  function paintBar() {
+    const n = lines().reduce((t, l) => t + l.q, 0);
+    $("cartbar").classList.toggle("hidden", !n);
+    $("opencart").textContent = "View cart (" + n + ") · " + money(cartTotal());
+  }
+  const maxOf = (k) => {
+    const sk = splitKey(k), p = products.find((x) => x.id === sk.pid);
+    if (!p) return 0;
+    if (p.has_variants) { const v = (p.variants || []).find((x) => x.id === sk.vid); return v ? v.max_qty : 0; }
+    return sk.vid ? 0 : p.max_qty;
+  };
+  function add(id) {
+    const max = maxOf(id), have = cart[id] || 0;
+    if (have >= max) return toast(max > 0 ? "Only " + max + " available." : "Sorry, this item is out of stock.");
+    cart[id] = have + 1; saveCart(); toast("Added to cart");
+  }
 
-            <div class="preview-orders">
-              <div class="preview-orders-heading">
-                <span>Your workflow</span>
-                <span>Made simpler ↗</span>
-              </div>
+  // Keep the cart in line with real stock, before the customer types any details.
+  function clampCart() {
+    let changed = false;
+    Object.keys(cart).forEach((id) => {
+      const max = maxOf(id);
+      if (max < 1) { delete cart[id]; changed = true; }
+      else if (cart[id] > max) { cart[id] = max; changed = true; }
+    });
+    if (changed) { saveCart(); toast("Your cart was updated because stock changed."); }
+  }
+  async function reloadStock() {
+    try {
+      const res = await fetch("/api/storefront?slug=" + encodeURIComponent(slug), { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (res.ok && data.success) { products = data.products || products; clampCart(); }
+    } catch (e) {}
+  }
+  async function openCartFresh() { await reloadStock(); openCart(); }
 
-              <div class="preview-order">
-                <div class="order-avatar" aria-hidden="true">01</div>
-                <div class="order-person">
-                  <strong>Add your products</strong>
-                  <small>Build your catalogue</small>
-                </div>
-                <div class="order-amount">
-                  <strong>Step 1</strong>
-                  <small>Organise</small>
-                </div>
-              </div>
+  function payOptions() {
+    const opts = payMethods.map((m) => ({ id: m.id, label: m.label }));
+    if (contact.whatsapp) opts.push({ id: "whatsapp", label: "Arrange payment on WhatsApp" });
+    if (!opts.length) return "";
+    return '<p class="msg" style="margin:14px 0 2px"><b>How would you like to pay?</b></p>' +
+      opts.map((o, i) => '<label class="opt"><input type="radio" name="pay" value="' + esc(o.id) + '"' + (i === 0 ? " checked" : "") + '> ' + esc(o.label) + '</label>').join("");
+  }
 
-              <div class="preview-order">
-                <div class="order-avatar orange" aria-hidden="true">02</div>
-                <div class="order-person">
-                  <strong>Share your storefront</strong>
-                  <small>Send your link to customers</small>
-                </div>
-                <div class="order-amount">
-                  <strong>Step 2</strong>
-                  <small>Connect</small>
-                </div>
-              </div>
+  function confirmation(data) {
+    const pay = data.payment || {}, d = pay.details || {}, ref = esc(data.order_number);
+    const prepaid = pay.type === "bank_transfer" || pay.type === "online";
+    const step1 = '<p class="msg" style="margin:14px 0 0"><b>Step 1: Make your payment</b></p>';
+    let how = "";
+    if (pay.type === "bank_transfer" && d.account_number) {
+      how = step1 + '<div class="box2"><b>Transfer ' + money(data.total_ngn) + ' to:</b><br>' + esc(d.bank_name) + '<br><b>' + esc(d.account_number) + '</b><br>' + esc(d.account_name) + '<br><span class="msg">Use ' + ref + ' as the payment reference.</span></div>';
+    } else if (pay.type === "online" && d.url && String(d.url).startsWith("https://")) {
+      how = step1 + '<a class="btn pur" href="' + esc(d.url) + '" target="_blank" rel="noopener">Pay ' + money(data.total_ngn) + ' now</a><p class="msg">Use ' + ref + ' as the payment note.</p>';
+    } else if (pay.type === "cash_on_delivery") {
+      how = '<div class="box2">Pay in cash when your order is delivered.</div>';
+    }
+    const label = prepaid ? "I've paid, send details on WhatsApp" : pay.type === "whatsapp" ? "Send order on WhatsApp" : "Message the seller on WhatsApp";
+    const wa = data.whatsapp_url
+      ? (prepaid ? '<p class="msg" style="margin:16px 0 0"><b>Step 2: Send your details to the seller</b></p><p class="msg">After paying, tap below to send your order details on WhatsApp, then attach your payment receipt.</p>' : "") +
+        '<a class="btn"' + (prepaid ? ' data-claim="1"' : "") + ' href="' + esc(data.whatsapp_url) + '" target="_blank" rel="noopener">' + label + '</a>'
+      : (prepaid ? '<button class="btn" data-claim="1" type="button">I have paid</button>' : "");
+    const tail = prepaid ? '<p class="msg">The seller will check your payment, then confirm and ship your order.</p>'
+      : pay.type === "whatsapp" ? '<p class="msg">Tap the button, then press send in WhatsApp to confirm your order and arrange payment.</p>'
+      : '<p class="msg">The seller has your order and will contact you on the phone number you gave.</p>';
+    return '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Order placed ✓</h2>' +
+      '<p>Your order number is <b>' + ref + '</b> (' + money(data.total_ngn) + ').</p>' + how + wa + tail +
+      (data.doc_url ? '<a class="btn pur" href="' + esc(data.doc_url) + '" target="_blank" rel="noopener">View your invoice</a>' : "") + (data.track_url ? '<p class="msg" style="margin-top:14px">Follow your order any time: <a href="' + esc(data.track_url) + '" style="color:#6d28d9;font-weight:700">Track my order</a>. The seller will also keep you updated on WhatsApp.</p>' : "") + '</div>';
+  }
 
-              <div class="preview-order">
-                <div class="order-avatar green" aria-hidden="true">03</div>
-                <div class="order-person">
-                  <strong>Manage your orders</strong>
-                  <small>Keep track of what comes in</small>
-                </div>
-                <div class="order-amount">
-                  <strong>Step 3</strong>
-                  <small>Manage</small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+  function openCart() {
+    const ls = lines();
+    if (!ls.length) {
+      $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2><p class="msg">Your cart is empty.</p></div>';
+    } else {
+      $("panel").innerHTML = '<button class="x" id="close" type="button" aria-label="Close">✕</button><div class="pad"><h2>Your cart</h2>' +
+        ls.map((l) => '<div class="row2"><div style="flex:1"><b>' + esc(l.p.name) + '</b>' + (l.v ? '<div class="msg" style="margin:2px 0 0">' + esc(l.v.name) + '</div>' : "") + '<div class="msg" style="margin:2px 0 0">' + money(l.u) + (l.mx <= 5 ? " · only " + l.mx + " available" : "") + '</div></div><div class="qty"><button data-m="' + l.k + '" type="button" aria-label="Less">−</button><span>' + l.q + '</span><button data-a="' + l.k + '" type="button" aria-label="More"' + (l.q >= l.mx ? ' disabled style="opacity:.4"' : "") + '>+</button></div></div>').join("") +
+        '<p class="price" style="margin:14px 0 4px">Total: ' + money(cartTotal()) + '</p>' +
+        '<input class="f" id="cn" type="text" placeholder="Your name" maxlength="100" autocomplete="name">' +
+        '<input class="f" id="cp" type="tel" placeholder="Phone number" maxlength="30" autocomplete="tel">' +
+        '<input class="f" id="ca" type="text" placeholder="Delivery address" maxlength="300" autocomplete="street-address">' +
+        '<input class="f" id="cc" type="text" placeholder="City" maxlength="80" autocomplete="address-level2">' +
+        '<textarea class="f" id="cnote" placeholder="Note to the seller (optional)" maxlength="500"></textarea>' +
+        '<input id="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0">' +
+        payOptions() +
+        '<button class="btn" id="place" type="button">Place order</button>' +
+        '<p class="msg">Your order is saved with the seller first. You will then see how to pay.</p></div>';
+      $("panel").querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.a] = Math.min(maxOf(b.dataset.a), cart[b.dataset.a] + 1); saveCart(); openCart(); }));
+      $("panel").querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { cart[b.dataset.m] -= 1; if (cart[b.dataset.m] < 1) delete cart[b.dataset.m]; saveCart(); openCart(); }));
+      $("place").addEventListener("click", place);
+    }
+    $("close").addEventListener("click", closeSheet);
+    showSheet();
+  }
 
-        <div class="storefront-float">
-          <div class="storefront-top">
-            <div class="storefront-logo" aria-hidden="true">N</div>
-            <div>
-              <strong>Nora Studio</strong>
-              <small>Storefront concept</small>
-            </div>
-          </div>
+  async function place() {
+    const btn = $("place");
+    btn.disabled = true; btn.textContent = "Placing your order…";
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+      const res = await fetch("/api/orders", {
+        method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, website: $("hp").value, items: lines().map((l) => ({ product_id: l.p.id, variant_id: l.v ? l.v.id : null, quantity: l.q })),
+          payment_method_id: (document.querySelector("input[name=pay]:checked") || {}).value || "", customer: { name: $("cn").value, phone: $("cp").value, address: $("ca").value, city: $("cc").value, note: $("cnote").value } })
+      });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "We could not place your order.");
+      cart = {}; saveCart();
+      $("panel").innerHTML = confirmation(data);
+      const claimBtn = $("panel").querySelector("[data-claim]");
+      if (claimBtn && data.claim_token) claimBtn.addEventListener("click", () => {
+        try {
+          fetch("/api/order-paid-claim", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug, order_number: data.order_number, token: data.claim_token }) });
+        } catch (e) {}
+        if (claimBtn.tagName === "BUTTON") { claimBtn.disabled = true; claimBtn.textContent = "Thanks! The seller will verify your payment."; }
+      });
+      $("close").addEventListener("click", closeSheet);
+    } catch (e) {
+      toast(e.name === "AbortError" ? "That took too long. Please try again." : e.message);
+      btn.disabled = false; btn.textContent = "Place order";
+    }
+  }
+  $("opencart").addEventListener("click", openCartFresh);
+  function closeSheet() { $("sheet").classList.add("hidden"); document.body.style.overflow = ""; }
+  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
-          <div class="store-products">
-            <div>
-              <div class="store-product-art">
-                <div class="product-shape"></div>
-              </div>
-              <span class="store-product-name">Everyday bag</span>
-              <span class="store-product-price">Product preview</span>
-            </div>
-
-            <div>
-              <div class="store-product-art brown">
-                <div class="product-shape bag"></div>
-              </div>
-              <span class="store-product-name">Classic tote</span>
-              <span class="store-product-price">Product preview</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Social platform logos -->
-    <section class="platform-strip" aria-labelledby="platform-heading">
-      <div class="section-shell">
-        <p id="platform-heading">Made for the places you already sell</p>
-
-        <div class="platform-list">
-          <div class="platform-item">
-            <span class="platform-symbol whatsapp" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M20 11.7a8.1 8.1 0 0 1-12 7.1L4 20l1.2-3.8A8.1 8.1 0 1 1 20 11.7Z"
-                  stroke="currentColor" stroke-width="1.8"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M8.5 8.1c.3-.6.6-.6 1-.6h.4c.2 0 .4.1.5.4l.8 1.8c.1.2.1.4-.1.6l-.6.7c-.2.2-.2.4 0 .6.6 1 1.4 1.8 2.4 2.3.2.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.7.8c.3.1.4.3.4.5 0 .5-.2 1-.6 1.3-.5.5-1.2.7-1.9.6-1.2-.2-2.5-.9-3.7-2-1.2-1.1-2-2.4-2.3-3.6-.2-.9 0-1.7.5-2.2Z"
-                  fill="currentColor"/>
-              </svg>
-            </span>
-            <span>WhatsApp</span>
-          </div>
-
-          <div class="platform-item">
-            <span class="platform-symbol instagram" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2"
-                  stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="12" cy="12" r="4.1"
-                  stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="17.6" cy="6.8" r="1.1" fill="currentColor"/>
-              </svg>
-            </span>
-            <span>Instagram</span>
-          </div>
-
-          <div class="platform-item">
-            <span class="platform-symbol tiktok" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M14 3v11.2a4.1 4.1 0 1 1-3.5-4.1"
-                  stroke="#25F4EE" stroke-width="3.5"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M14 3v11.2a4.1 4.1 0 1 1-3.5-4.1"
-                  stroke="#FE2C55" stroke-width="2.1"
-                  stroke-linecap="round" stroke-linejoin="round"
-                  transform="translate(1.2 .4)"/>
-                <path d="M14 3v7.1c1.5 1.5 3.2 2.2 5.1 2.2"
-                  stroke="currentColor" stroke-width="3.1"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <span>TikTok</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- How it works -->
-    <section class="section section-shell" id="how-it-works">
-      <div class="section-heading">
-        <span class="section-kicker">HOW KIVO WORKS</span>
-        <h2>Less back-and-forth.<br>More business.</h2>
-        <p>A straightforward way to organise the essentials of selling online.</p>
-      </div>
-
-      <div class="steps-grid">
-        <article class="step-card">
-          <div class="step-number">01</div>
-          <h3>Set up your store</h3>
-          <p>Bring your products together in one catalogue that is easier to maintain.</p>
-        </article>
-
-        <article class="step-card">
-          <div class="step-number">02</div>
-          <h3>Share one link</h3>
-          <p>Give customers a storefront link they can open and browse online.</p>
-        </article>
-
-        <article class="step-card">
-          <div class="step-number">03</div>
-          <h3>Manage your sales</h3>
-          <p>Keep products and order activity organised as your business grows.</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- Features -->
-    <section class="section features-section" id="features">
-      <div class="section-shell">
-        <div class="section-heading">
-          <span class="section-kicker">ONE HOME FOR YOUR BUSINESS</span>
-          <h2>Built around the way you sell.</h2>
-          <p>Practical tools for sellers who want a more organised way to run their online business.</p>
-        </div>
-
-        <div class="features-grid">
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">▦</div>
-            <h3>Product catalogue</h3>
-            <p>Keep product details, prices, images, and available options organised together.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">↗</div>
-            <h3>Shareable storefront</h3>
-            <p>Give customers one place to explore your products from a link you can share.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">☷</div>
-            <h3>Order management</h3>
-            <p>Keep order information and fulfilment activity together instead of scattered across chats.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">⌁</div>
-            <h3>Business overview</h3>
-            <p>Work towards a clearer view of your store activity as your Kivo setup develops.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- Pricing -->
-    <section class="section section-shell" id="pricing">
-      <div class="section-heading">
-        <span class="section-kicker">SIMPLE, TRANSPARENT PRICING</span>
-        <h2>Choose the plan for your next stage.</h2>
-        <p>Pick a plan based on the size of your catalogue and the team you need.</p>
-      </div>
-
-      <div class="pricing-grid">
-        <article class="pricing-card">
-          <h3 class="plan-name">Beginner</h3>
-          <p class="plan-description">For sellers getting organised.</p>
-          <div class="plan-price">₦4,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Up to 30 products</li>
-            <li>1 store</li>
-            <li>1 team member</li>
-          </ul>
-          <a class="button button-secondary plan-button" href="/auth/login.html?plan=beginner&interval=monthly">Get started</a>
-        </article>
-
-        <article class="pricing-card featured">
-          <span class="plan-badge">Popular choice</span>
-          <h3 class="plan-name">Growth</h3>
-          <p class="plan-description">For sellers building momentum.</p>
-          <div class="plan-price">₦9,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Up to 150 products</li>
-            <li>1 store</li>
-            <li>2 team members</li>
-          </ul>
-          <a class="button button-primary plan-button" href="/auth/login.html?plan=growth&interval=monthly">Get started</a>
-        </article>
-
-        <article class="pricing-card">
-          <h3 class="plan-name">Pro</h3>
-          <p class="plan-description">For established, busy sellers.</p>
-          <div class="plan-price">₦15,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Up to 500 products</li>
-            <li>1 store</li>
-            <li>5 team members</li>
-          </ul>
-          <a class="button button-secondary plan-button" href="/auth/login.html?plan=pro&interval=monthly">Get started</a>
-        </article>
-
-        <article class="pricing-card">
-          <h3 class="plan-name">Platinum</h3>
-          <p class="plan-description">For sellers running multiple stores.</p>
-          <div class="plan-price">₦22,000 <span>/ month</span></div>
-          <p class="plan-billing">Monthly subscription</p>
-          <div class="plan-divider"></div>
-          <ul class="plan-features">
-            <li>Unlimited products</li>
-            <li>Up to 3 stores</li>
-            <li>15 team members per store</li>
-          </ul>
-          <a class="button button-secondary plan-button" href="/auth/login.html?plan=platinum&interval=monthly">Get started</a>
-        </article>
-      </div>
-
-      <p class="annual-note">
-        Annual subscription options are planned to offer savings compared with monthly billing.
-        Confirm the available billing options before subscribing.
-      </p>
-    </section>
-
-    <!-- FAQ -->
-    <section class="section faq-section" id="faq">
-      <div class="section-shell">
-        <div class="section-heading">
-          <span class="section-kicker">GOOD QUESTIONS</span>
-          <h2>Before you get started.</h2>
-          <p>A few things to know about Kivo.</p>
-        </div>
-
-        <div class="faq-list">
-          <details>
-            <summary>Who is Kivo for?</summary>
-            <p>Kivo is being built for social sellers who want a more organised way to manage products, share a storefront, and keep track of orders.</p>
-          </details>
-
-          <details>
-            <summary>Do my customers need a Kivo account?</summary>
-            <p>The intended shopping experience supports guest checkout, so customers can shop without needing a seller account. The complete checkout flow must be implemented and tested before this is available in production.</p>
-          </details>
-
-          <details>
-            <summary>Can I share my store on social media?</summary>
-            <p>The storefront is designed to be shared through channels such as WhatsApp, Instagram, and TikTok. Availability depends on the relevant storefront features being implemented.</p>
-          </details>
-
-          <details>
-            <summary>Can I change my plan later?</summary>
-            <p>The plans are structured for different business sizes. Plan changes should be handled through the subscription and billing features once those flows are available.</p>
-          </details>
-
-          <details>
-            <summary>Does Kivo receive my customers' sales payments?</summary>
-            <p>Kivo's subscription fee is separate from the money you receive for your own sales. Seller payment processing needs to be configured and verified before accepting live payments.</p>
-          </details>
-        </div>
-      </div>
-    </section>
-
-    <!-- Final CTA -->
-    <section class="final-cta-wrap">
-      <div class="section-shell">
-        <div class="final-cta">
-          <span class="section-kicker">YOUR BUSINESS, MORE ORGANISED</span>
-          <h2>Give your social sales a home.</h2>
-          <p>Bring your products, storefront, and sales workflow together with Kivo.</p>
-          <a class="button" href="/auth/login.html">
-            Explore Kivo <span aria-hidden="true">↗</span>
-          </a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="section-shell footer-inner">
-      <div class="footer-brand">
-        <a class="brand" href="/" aria-label="Kivo home">
-          <img src="assets/logo/kivo-wordmark.png" alt="Kivo">
-        </a>
-        <p class="footer-note">One simple home for your social sales.</p>
-      </div>
-
-      <div class="footer-links">
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#faq">FAQs</a>
-        <a href="/auth/login.html">Log in</a>
-      </div>
-
-      <p class="footer-copyright">
-        © <span id="current-year">2026</span> Kivo. All rights reserved.
-      </p>
-    </div>
-  </footer>
-
-  <script src="js/app.js"></script>
+  if (!slug) return fail("Store not found", "This store link is not valid.");
+  try {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch("/api/storefront?slug=" + encodeURIComponent(slug), { signal: ctl.signal, headers: { Accept: "application/json" } });
+    clearTimeout(timer);
+    if (res.status === 404) return fail("Store not found", "This store doesn't exist or isn't open right now.");
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Unable to load this store.");
+    store = data.store; contact = data.contact || {}; payMethods = data.payment_methods || []; products = data.products || [];
+    document.title = store.name + " | Kivo";
+    render();
+    clampCart();
+    paintBar();
+  } catch (e) {
+    fail("Couldn't load this store", "Check your connection and refresh the page.");
+  }
+})();
+</script>
 </body>
 </html>
